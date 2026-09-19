@@ -241,12 +241,17 @@ installable PWA on free hosting and make it good enough to use daily.
 Built and verified locally in Chrome; deploy is the next step.
 
 **Hosting:** GitHub Pages from the `docs/` folder of the public repo
-`neel0903/gujlish` (Pages on a private repo needs a paid plan). URL will
-be `https://neel0903.github.io/gujlish/`. Deploy = `python build_site.py`,
-commit, push. First-time setup, once `gh auth login` has been run:
+`neel0903/gujlish` (Pages on a private repo needs a paid plan).
+**Live since 2026-09-19 at `https://neel0903.github.io/gujlish/`.**
+Deploy = `python build_site.py`, commit, `git push`; Pages rebuilds in
+about a minute. Verified live in Chrome: service worker active with
+scope `/gujlish/`, manifest standalone, typing and prediction work.
+Install on iPhone: open the URL in Safari → Share → Add to Home Screen.
+
+First-time setup was (kept for reference; `gh auth login` first):
 
 ```bash
-gh repo create gujlish --public --source . --push
+gh repo create gujlish --public --source . --remote origin --push
 gh api -X POST repos/neel0903/gujlish/pages -f "source[branch]=main" -f "source[path]=/docs"
 ```
 
