@@ -53,7 +53,12 @@ def load_english():
                 break
     c_max = rows[0][1]
     # Same log scale as the Gujlish lexicon so the two compete fairly.
-    return [[w, max(1, round(100 * math.log1p(c) / math.log1p(c_max)))] for w, c in rows]
+    scaled = [[w, max(1, round(100 * math.log1p(c) / math.log1p(c_max)))] for w, c in rows]
+    # Committed copy so build_db.py (and the iOS build) need no corpus.
+    with open("english.tsv", "w", encoding="utf-8") as fh:
+        for w, f in scaled:
+            fh.write(f"{w}\t{f}\n")
+    return scaled
 
 
 def load_native(words):

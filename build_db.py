@@ -22,8 +22,16 @@ CREATE TABLE words (
     surface   TEXT NOT NULL,
     strict_k  TEXT NOT NULL,
     loose_k   TEXT NOT NULL,
-    freq      INTEGER NOT NULL
+    freq      INTEGER NOT NULL,
+    native    TEXT              -- Gujarati-script form, for script mode
 );
+
+-- English words for mixed mode, same 1..100 log scale as freq.
+DROP TABLE IF EXISTS english;
+CREATE TABLE english (
+    word  TEXT PRIMARY KEY,
+    freq  INTEGER NOT NULL
+) WITHOUT ROWID;
 
 CREATE TABLE bigrams (
     prev_id INTEGER NOT NULL,
@@ -45,7 +53,38 @@ CREATE TABLE trigrams (
 CREATE INDEX idx_words_strict ON words(strict_k, freq DESC);
 CREATE INDEX idx_words_loose ON words(loose_k, freq DESC);
 CREATE INDEX idx_words_surface ON words(surface);
+-- For the autocorrect scan over words one letter away.
+CREATE INDEX idx_words_len ON words(LENGTH(surface));
+CREATE INDEX idx_english_freq ON english(freq DESC);
 """
+
+ENGLISH_TSV = "english.tsv"
+
+
+def load_native(path):
+    """surface<TAB>native beside the lexicon, if present."""
+    out = {}
+    native_path = os.path.splitext(path)[0] + ".native.tsv"
+    if os.path.exists(native_path):
+        with open(native_path, encoding="utf-8") as fh:
+            for line in fh:
+                p = line.rstrip("\n").split("\t")
+                if len(p) == 2:
+                    out[p[0]] = p[1]
+    return out
+
+
+def load_english():
+    """word<TAB>freq, committed at the repo root so the DB rebuilds
+    without the corpus download."""
+    out = []
+    if os.path.exists(ENGLISH_TSV):
+        with open(ENGLISH_TSV, encoding="utf-8") as fh:
+            for line in fh:
+                p = line.rstrip("\n").split("\t")
+                if len(p) == 2:
+                    out.append((p[0], int(p[1])))
+    return out
 
 
 def load_seed():
@@ -91,13 +130,16 @@ def build(out_path="gujlish.db", source=None):
     conn = sqlite3.connect(out_path)
     conn.executescript(SCHEMA)
 
+    native = load_native(source) if source else {}
     ids = {}
     rows = []
     for i, (surface, freq) in enumerate(sorted(words.items()), start=1):
         ids[surface] = i
         rows.append((i, surface, strict_key(surface, prefix=True),
-                     loose_key(surface, prefix=True), freq))
-    conn.executemany("INSERT INTO words VALUES (?,?,?,?,?)", rows)
+                     loose_key(surface, prefix=True), freq, native.get(surface)))
+    conn.executemany("INSERT INTO words VALUES (?,?,?,?,?,?)", rows)
+    english = load_english()
+    conn.executemany("INSERT OR REPLACE INTO english VALUES (?,?)", english)
 
     bg = []
     dropped = 0
@@ -118,12 +160,13 @@ def build(out_path="gujlish.db", source=None):
     conn.close()
 
     size_kb = os.path.getsize(out_path) / 1024
-    print(f"{out_path}: {len(rows)} words, {len(bg)} bigrams, {len(tg)} trigrams, {size_kb:.0f} KB")
+    print(f"{out_path}: {len(rows)} words ({sum(1 for r in rows if r[5])} with script), "
+          f"{len(bg)} bigrams, {len(tg)} trigrams, {len(english)} English, {size_kb:.0f} KB")
     if dropped:
         print(f"  {dropped} bigrams dropped (word not in lexicon)")
 
     keys = {}
-    for _, surface, key, _lk, _f in rows:
+    for _, surface, key, _lk, _f, _n in rows:
         keys.setdefault(key, []).append(surface)
     collisions = {k: v for k, v in keys.items() if len(v) > 1}
     print(f"  {len(collisions)} phonetic keys carry more than one word")

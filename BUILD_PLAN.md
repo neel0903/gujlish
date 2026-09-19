@@ -364,6 +364,14 @@ strip placement) need a real iPhone to confirm.
 
 ## Phase 3 — iOS
 
+**The full end-to-end plan for this phase is `IOS_PLAN.md`** (written
+2026-09-19): isolated setup on a friend's Mac, Step 0 environment
+check, the Swift port pinned to the same `expected.json`, keyboard,
+container app, testing protocol, free-account sideloading with AltStore
+for weekly re-signing, and the App Store steps for when a paid account
+exists. Target for now: install on Neel's own iPhone with the free
+Apple ID. The section below is the original sketch.
+
 Needs a Mac. Xcode only runs on macOS; there is no Linux path. A used M1
 Mac mini around $300–400 beats cloud Mac rental within two years.
 

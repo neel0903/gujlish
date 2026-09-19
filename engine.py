@@ -41,7 +41,7 @@ class GujlishEngine:
         cur = self.conn.execute(
             f"SELECT id, surface, strict_k, loose_k, freq FROM words "
             f"WHERE {column} >= ? AND {column} < ? "
-            f"ORDER BY freq DESC, surface LIMIT ?",
+            f"ORDER BY freq DESC, surface LIMIT ?",  # noqa: same shape as the Swift query
             (key_prefix, key_prefix + "￿", limit),
         )
         return cur.fetchall()
