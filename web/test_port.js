@@ -43,6 +43,16 @@ for (const { typed, prev, result } of expected.trials) {
 console.log(`${expected.trials.length - trialBad}/${expected.trials.length} trials give the same candidates`);
 bad += trialBad;
 
+// 2b. Autocorrect, against the Python reference.
+let corrBad = 0;
+for (const { typed, prev, result } of expected.corrections) {
+  const got = engine.correct(typed, prev);
+  if (got !== result) { corrBad++; console.log(`CORR ${JSON.stringify(typed)} after ${JSON.stringify(prev)}: js ${got}  py ${result}`); }
+}
+console.log(`${expected.corrections.length - corrBad}/${expected.corrections.length} corrections match Python`);
+console.log("   " + expected.corrections.map(c => `${c.typed}->${c.result || "keep"}`).join("  "));
+bad += corrBad;
+
 // 3. Beyond the Python reference: English mixed mode and personal words.
 const engSrc = fs.readFileSync(path.join(__dirname, "english.js"), "utf8");
 const ENGLISH = JSON.parse(engSrc.slice(engSrc.indexOf("=") + 1).trim().replace(/;$/, ""));
@@ -64,6 +74,17 @@ for (let i = 0; i < 3; i++) mixed.accept("thashe", "kem");
 check("accepting thashe after kem puts it first (" + mixed.suggest("th", "kem").join(",") + ")", mixed.suggest("th", "kem")[0] === "thashe");
 mixed.forgetPersonal();
 check("forget restores (" + mixed.suggest("th", "kem").join(",") + ")", mixed.suggest("th", "kem").join(",") === engine.suggest("th", "kem").join(",") && !mixed.bySurface["neelbhai"]);
+
+// The user's own spec for autocorrect.
+let prev = null, fixed = [];
+for (const w of ["Avi", "gaye", "ghara"]) { const f = mixed.correct(w, prev); fixed.push(f || w); prev = f || w; }
+check("'Avi gaye ghara' -> aavi gaya ghare (" + fixed.join(" ") + ")", fixed.join(" ") === "aavi gaya ghare");
+check("mixed: 'meeting' is not corrected", mixed.correct("meeting") === null);
+check("mixed: 'gate' (English) is not corrected", mixed.correct("gate") === null);
+check("'kem cho' untouched", mixed.correct("kem") === null && mixed.correct("cho", "kem") === null);
+mixed.learnWord("bhabhiji", 2);
+check("a taught word is never corrected", mixed.correct("bhabhiji") === null);
+mixed.forgetPersonal();
 
 // 4. Latency: the thing the phone will feel.
 const probes = ["c", "ch", "che", "tha", "thay", "kem", "majam", "mjama", "sarkar", "gujar", "k", "a"];

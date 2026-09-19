@@ -137,6 +137,54 @@ class GujlishEngine:
         writes to the user dictionary in the app group container."""
         self.user_counts[surface] = self.user_counts.get(surface, 0) + 1
 
+    CORRECT_MARGIN = 20
+
+    def correct(self, typed, prev_word=None):
+        """What a committed word should have been, or None to leave it.
+        Candidates: same phonetic key (gharey -> ghare) or one letter
+        away (gaye -> gaya), scored like suggestions plus a closeness
+        bonus, against a bias to keep what was typed. Never corrects a
+        word the user has taught it or a common known word. Mirrored in
+        web/gujlish.js, which additionally spares English words."""
+        clean = "".join(c for c in typed.lower() if "a" <= c <= "z")
+        if len(clean) < 3:
+            return None
+        uc = self.user_counts.get(clean, 0)
+        if uc >= 2:
+            return None
+        known = self.conn.execute(
+            "SELECT id, freq FROM words WHERE surface = ?", (clean,)).fetchone()
+        if known and known["freq"] >= 60:
+            return None
+        weights = self._bigram_weights(prev_word)
+        keep = 30
+        if known:
+            keep = known["freq"] + weights.get(known["id"], 0) * 4 + user_boost(uc) + 25
+
+        cands = {}
+        for key in (loose_key(clean, prefix=True), loose_key(clean)):
+            for r in self.conn.execute(
+                    "SELECT id, surface, freq FROM words WHERE loose_k = ?", (key,)):
+                cands[r["id"]] = (r, 30)
+        for r in self.conn.execute(
+                "SELECT id, surface, freq FROM words WHERE LENGTH(surface) BETWEEN ? AND ?",
+                (len(clean) - 1, len(clean) + 1)):
+            if r["id"] in cands:
+                continue
+            if _within_one_edit(clean, r["surface"]):
+                cands[r["id"]] = (r, 10 if _is_vowel_swap(clean, r["surface"]) else 0)
+        best = None
+        for r, bonus in cands.values():
+            if r["surface"] == clean:
+                continue
+            s = (r["freq"] + weights.get(r["id"], 0) * 4
+                 + user_boost(self.user_counts.get(r["surface"], 0)) + bonus)
+            if best is None or s > best[0] or (s == best[0] and r["surface"] < best[1]):
+                best = (s, r["surface"])
+        if best is None or best[0] - keep < self.CORRECT_MARGIN:
+            return None
+        return best[1]
+
 
 def user_boost(count):
     """Three acceptances put a word firmly ahead of the corpus; beyond
@@ -144,6 +192,15 @@ def user_boost(count):
     times does not drown everything else. Mirrored in web/gujlish.js."""
     import math
     return 25 * min(count, 3) + 10 * math.log1p(count) if count else 0
+
+
+def _is_vowel_swap(a, b):
+    """Same length, exactly one position differs, and both are vowels:
+    gaye/gaya. The matra is where Gujlish typing slips most."""
+    if len(a) != len(b):
+        return False
+    diff = [i for i in range(len(a)) if a[i] != b[i]]
+    return len(diff) == 1 and a[diff[0]] in "aeiou" and b[diff[0]] in "aeiou"
 
 
 def _within_one_edit(a, b):
@@ -182,3 +239,12 @@ if __name__ == "__main__":
         res = eng.suggest(typed, prev) if typed else eng.next_word(prev)
         ctx = f"[{prev}] " if prev else ""
         print(f"{ctx}{typed!r:<10} -> {', '.join(res) or '(nothing)'}")
+
+    print("\nAutocorrect on commit:")
+    prev = None
+    for word in "avi gaye ghara".split():
+        fix = eng.correct(word, prev)
+        print(f"    {word!r:<8} -> {fix or '(kept)'}")
+        prev = fix or word
+    for word in ["kem", "che", "thayoo", "gharey", "majaama", "tamne", "jsk"]:
+        print(f"    {word!r:<8} -> {eng.correct(word) or '(kept)'}")

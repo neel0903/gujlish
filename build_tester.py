@@ -62,7 +62,14 @@ def expected(words):
               "jamwa", "phaphda", "zaju", "kharekhar", "haan", "chhe"]
     probe_keys = [[p, strict_key(p, True), loose_key(p, True), strict_key(p), loose_key(p)]
                   for p in probes]
-    return {"trials": trials, "keys": keys, "probeKeys": probe_keys}
+    corrections = []
+    for typed, prev in [("avi", None), ("gaye", "aavi"), ("ghara", "gaya"), ("thayoo", None),
+                        ("gharey", None), ("chhe", None), ("nathee", None), ("majaama", None),
+                        ("kem", None), ("che", None), ("tamne", None), ("jsk", None),
+                        ("karvu", None), ("bhulyo", None), ("pn", None), ("kemcho", None),
+                        ("jamva", "chalo"), ("thyu", "kem"), ("sarkr", None), ("gujrat", None)]:
+        corrections.append({"typed": typed, "prev": prev, "result": eng.correct(typed, prev)})
+    return {"trials": trials, "keys": keys, "probeKeys": probe_keys, "corrections": corrections}
 
 
 def main():

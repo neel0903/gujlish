@@ -161,7 +161,11 @@
 
   Engine.prototype.setEnglish = function (list) {
     this.english = [];
-    for (var i = 0; i < list.length; i++) this.english.push({ surface: list[i][0], freq: list[i][1] });
+    this.englishSet = {};          // word -> freq
+    for (var i = 0; i < list.length; i++) {
+      this.english.push({ surface: list[i][0], freq: list[i][1] });
+      this.englishSet[list[i][0]] = list[i][1];
+    }
   };
 
   Engine.prototype.byPrefix = function (keyPrefix, field, limit) {
@@ -330,6 +334,70 @@
       out.push(cands[i][1]);
     }
     return out;
+  };
+
+  // ---------- autocorrect ----------
+
+  var CORRECT_MARGIN = 20;
+
+  // "gaye" vs "gaya": one vowel differs. The barakhadi is where typing
+  // goes wrong most — the matra — so a vowel-only slip is the most
+  // likely error and gets a bonus over consonant edits.
+  function isVowelSwap(a, b) {
+    if (a.length !== b.length) return false;
+    var diff = -1;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) { if (diff >= 0) return false; diff = i; }
+    }
+    return diff >= 0 && VOWELS.indexOf(a[diff]) >= 0 && VOWELS.indexOf(b[diff]) >= 0;
+  }
+
+  // What the committed word should have been, or null to leave it.
+  // Mirrors GujlishEngine.correct in engine.py. Candidates are words
+  // with the same phonetic key (gharey -> ghare, thayoo -> thayu) and
+  // words one letter away (gaye -> gaya, ghara -> ghare), scored like
+  // suggestions plus a closeness bonus, against a bias to keep what was
+  // typed. Words you have taught it (accepted or restored twice) are
+  // never corrected; common known words are never corrected. In mixed
+  // mode an English word defends itself with its own frequency, so
+  // "meeting" and "gate" stay but "avi" (a video format) still becomes
+  // aavi.
+  Engine.prototype.correct = function (typed, prevWord) {
+    var clean = cleanSurface(typed);
+    if (clean.length < 3) return null;
+    var known = this.bySurface[clean];
+    var uc = this.userCounts[clean] || 0;
+    if (uc >= 2) return null;
+    if (known && !known.personal && known.freq >= 60) return null;
+
+    var weights = this.bigramWeights(prevWord);
+    var keep = 30;
+    if (known && !known.personal) keep = known.freq + (weights[known.id] || 0) * 4 + userBoost(uc) + 25;
+    var eng = this.englishSet && this.mode !== "gujlish" ? this.englishSet[clean] : 0;
+    if (eng) keep = Math.max(keep, eng - ENGLISH_PENALTY + userBoost(uc) + 25);
+
+    var cands = {}, id, i;
+    var keys = [looseKey(clean, true), looseKey(clean, false)];
+    for (i = 0; i < keys.length; i++) {
+      var ids = this.byLoose[keys[i]] || [];
+      for (var j = 0; j < ids.length; j++) cands[ids[j]] = 30;
+    }
+    this._ensureSorted();
+    for (i = 0; i < this.words.length; i++) {
+      var w = this.words[i];
+      if (cands[w.id] !== undefined || Math.abs(w.surface.length - clean.length) > 1) continue;
+      if (withinOneEdit(clean, w.surface)) cands[w.id] = isVowelSwap(clean, w.surface) ? 10 : 0;
+    }
+    var best = null;
+    for (id in cands) {
+      w = this.byId[id];
+      if (w.surface === clean) continue;
+      if (w.personal && (this.userCounts[w.surface] || 0) < 2) continue;
+      var s = w.freq + (weights[w.id] || 0) * 4 + userBoost(this.userCounts[w.surface]) + cands[id];
+      if (!best || s > best.score || (s === best.score && w.surface < best.surface)) best = { surface: w.surface, score: s };
+    }
+    if (!best || best.score - keep < CORRECT_MARGIN) return null;
+    return best.surface;
   };
 
   // ---------- personal dictionary ----------

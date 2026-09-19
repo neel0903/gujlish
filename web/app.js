@@ -11,7 +11,7 @@
   var loadMs = Math.round(performance.now() - t0);
 
   // ---------- settings ----------
-  var settings = { mode: "mixed", showDebug: false };
+  var settings = { mode: "mixed", showDebug: false, autocorrect: true };
   try { Object.assign(settings, JSON.parse(localStorage.getItem("gujlish.settings") || "{}")); } catch (e) {}
   function saveSettings() { try { localStorage.setItem("gujlish.settings", JSON.stringify(settings)); } catch (e) {} }
   engine.mode = settings.mode;
@@ -110,7 +110,18 @@
 
     strip.innerHTML = "";
     strip.classList.toggle("predicted", predicted);
-    if (!res.surfaces.length) {
+    if (lastCorrection && !s.current) {
+      var u = document.createElement("button");
+      u.type = "button";
+      u.className = "undo";
+      u.textContent = lastCorrection.original;
+      u.title = "Keep what you typed";
+      u.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
+      u.addEventListener("touchstart", function (ev) { ev.preventDefault(); undoCorrection(); }, { passive: false });
+      u.addEventListener("click", undoCorrection);
+      strip.appendChild(u);
+    }
+    if (!res.surfaces.length && !lastCorrection) {
       var e = document.createElement("span");
       e.className = "empty";
       e.textContent = s.current ? "no match — space keeps what you typed" : (s.prev ? "" : "Start typing");
@@ -148,22 +159,60 @@
     lastTake = now;
     var s = split();
     msg.value = s.head + surface + " ";
+    lastValue = msg.value;
+    lastCorrection = null;
     engine.accept(surface, s.prev);
     savePersonal();
     msg.focus();
     render();
   }
 
-  // Space commits the typed word: learn it, and its pair with the word
-  // before, so your own spellings climb even when you never tap a chip.
-  var lastValue = "";
+  // Keep the typist's capitalisation: "Avi" -> "Aavi", "AVI" -> "AAVI".
+  function matchCase(typed, fix) {
+    if (typed.length > 1 && typed === typed.toUpperCase() && /[A-Z]/.test(typed)) return fix.toUpperCase();
+    if (/^[A-Z]/.test(typed)) return fix.charAt(0).toUpperCase() + fix.slice(1);
+    return fix;
+  }
+
+  // Space (or a newline) commits the typed word. With autocorrect on,
+  // a wrong spelling is replaced by the word as the Gujarati script
+  // spells it, and the strip offers the original back for one tap.
+  // What gets learned is the committed word, so typos don't stick.
+  var lastValue = "", lastCorrection = null;
+  function undoCorrection() {
+    var c = lastCorrection;
+    if (!c) return;
+    var v = msg.value, tail = c.replacement + " ";
+    if (v.slice(-tail.length) === tail) msg.value = v.slice(0, -tail.length) + c.original + " ";
+    lastValue = msg.value;
+    lastCorrection = null;
+    engine.learnWord(c.original, 2);        // twice: "I meant it" — never corrected again
+    if (c.prev) engine.learnBigram(c.prev, c.original, 1);
+    savePersonal();
+    msg.focus();
+    render();
+  }
   msg.addEventListener("input", function () {
     var v = msg.value;
-    if (v.length > lastValue.length && /\s$/.test(v) && !/\s$/.test(lastValue)) {
-      var m = /(\S+)\s$/.exec(v);
-      if (m && G.cleanSurface(m[1])) {
+    var committed = v.length > lastValue.length && /\s$/.test(v) && !/\s$/.test(lastValue);
+    if (!committed) lastCorrection = null;
+    if (committed) {
+      var m = /(\S+)(\s)$/.exec(v);
+      var clean = m && G.cleanSurface(m[1]);
+      if (clean) {
         var before = /(\S+)\s+\S+\s$/.exec(v);
-        engine.accept(G.cleanSurface(m[1]), before ? before[1] : null);
+        var prev = before ? before[1] : null;
+        var fix = settings.autocorrect ? engine.correct(m[1], prev) : null;
+        if (fix) {
+          var shown = matchCase(m[1], fix);
+          msg.value = v.slice(0, v.length - m[0].length) + shown + m[2];
+          v = msg.value;
+          lastCorrection = { original: m[1], replacement: shown, prev: prev };
+          engine.accept(fix, prev);
+        } else {
+          lastCorrection = null;
+          engine.accept(clean, prev);
+        }
         savePersonal();
       }
     }
@@ -228,10 +277,10 @@
   $("backspace").addEventListener("click", function () {
     var s = split();
     msg.value = s.current ? s.head : s.head.replace(/\S+\s*$/, "");
-    lastValue = msg.value;
+    lastValue = msg.value; lastCorrection = null;
     msg.focus(); render();
   });
-  $("clear").addEventListener("click", function () { msg.value = ""; lastValue = ""; msg.focus(); render(); });
+  $("clear").addEventListener("click", function () { msg.value = ""; lastValue = ""; lastCorrection = null; msg.focus(); render(); });
 
   // ---------- settings sheet ----------
   var dlg = $("settings");
@@ -239,6 +288,7 @@
     var radios = dlg.querySelectorAll("input[name=mode]");
     radios.forEach(function (r) { r.checked = r.value === settings.mode; });
     $("showDebug").checked = settings.showDebug;
+    $("autocorrect").checked = settings.autocorrect;
     if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
   }
   $("openSettings").addEventListener("click", openSettings);
@@ -249,6 +299,7 @@
   dlg.addEventListener("change", function (ev) {
     if (ev.target.name === "mode") { settings.mode = ev.target.value; engine.mode = settings.mode; }
     if (ev.target.id === "showDebug") { settings.showDebug = ev.target.checked; debug.hidden = !settings.showDebug; }
+    if (ev.target.id === "autocorrect") settings.autocorrect = ev.target.checked;
     saveSettings(); render();
   });
   dlg.addEventListener("close", function () { render(); });

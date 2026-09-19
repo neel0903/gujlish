@@ -218,6 +218,7 @@ def wiki_counts(dump_path, refresh=False):
 # ---------------------------------------------------------------------------
 
 _RE_ROMAN = re.compile(r"^[a-z]+$")
+_RE_BARE_CONSONANT = re.compile(r"[ક-હ]")
 _RE_DOUBLE_VOWEL = re.compile(r"aa|ee|oo|ii|uu")
 _RE_DOUBLE_CONS = re.compile(r"([b-df-hj-np-tv-z])\1")
 
@@ -246,6 +247,13 @@ def clean_roman(r, native=None):
     r = canon(r.strip().lower())
     if native and native.endswith("ં") and len(r) > 2 \
             and r[-1] in "nm" and r[-2] in "aeiou":
+        r = r[:-1]
+    # Annotators also write out the final inherent vowel — ghara,
+    # gujarata — that the register drops: ghar, gujarat. When the script
+    # ends in a bare consonant (no matra, not a cluster like મિત્ર),
+    # strip that trailing a.
+    if native and len(native) > 1 and _RE_BARE_CONSONANT.match(native[-1]) \
+            and native[-2] != "્" and len(r) > 3 and r[-1] == "a" and r[-2] not in "aeiou":
         r = r[:-1]
     return r if _RE_ROMAN.match(r) else None
 

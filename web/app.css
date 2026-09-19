@@ -79,6 +79,8 @@ textarea:focus { border-color: var(--accent); }
 .strip button.first { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
 .strip.predicted button.first { background: var(--chip); color: var(--chip-fg); font-weight: 400; }
 .strip button.en { font-style: italic; }
+.strip button.undo { background: transparent; border: 1px dashed var(--muted); color: var(--muted); }
+.strip button.undo::before { content: "↶ "; }
 .strip button.me::after { content: " ·"; color: var(--ok); font-weight: 700; }
 .strip .empty { color: var(--muted); font-size: 14px; align-self: center; padding: 0 6px; }
 
