@@ -4,6 +4,7 @@ data/
 *.db
 __pycache__/
 web/lexicon.js
+web/english.js
 web/expected.json
 lexicon.review.tsv
 tester.html

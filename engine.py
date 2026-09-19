@@ -102,7 +102,7 @@ class GujlishEngine:
             for r in rows_:
                 score = r["freq"] - penalty
                 score += weights.get(r["id"], 0) * 4
-                score += self.user_counts.get(r["surface"], 0) * 25
+                score += user_boost(self.user_counts.get(r["surface"], 0))
                 score -= (len(r["loose_k"]) - len(lk)) * 3
                 if r["strict_k"] == sk:
                     score += 40
@@ -136,6 +136,14 @@ class GujlishEngine:
         """Call when the user taps a suggestion. On device this also
         writes to the user dictionary in the app group container."""
         self.user_counts[surface] = self.user_counts.get(surface, 0) + 1
+
+
+def user_boost(count):
+    """Three acceptances put a word firmly ahead of the corpus; beyond
+    that it grows slowly, so a chat export where one word appears 800
+    times does not drown everything else. Mirrored in web/gujlish.js."""
+    import math
+    return 25 * min(count, 3) + 10 * math.log1p(count) if count else 0
 
 
 def _within_one_edit(a, b):

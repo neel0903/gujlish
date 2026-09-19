@@ -43,7 +43,29 @@ for (const { typed, prev, result } of expected.trials) {
 console.log(`${expected.trials.length - trialBad}/${expected.trials.length} trials give the same candidates`);
 bad += trialBad;
 
-// 3. Latency: the thing the phone will feel.
+// 3. Beyond the Python reference: English mixed mode and personal words.
+const engSrc = fs.readFileSync(path.join(__dirname, "english.js"), "utf8");
+const ENGLISH = JSON.parse(engSrc.slice(engSrc.indexOf("=") + 1).trim().replace(/;$/, ""));
+const mixed = new G.Engine(GUJLISH_DATA.words, GUJLISH_DATA.bigrams, ENGLISH);
+function check(label, cond) { if (!cond) { bad++; console.log("FAIL " + label); } else console.log("ok   " + label); }
+check("mixed: 'kem' shows no English", mixed.suggestDetailed("kem").surfaces.every(s => mixed.suggestDetailed("kem").sources[s] !== "en"));
+const meet = mixed.suggestDetailed("meet");
+check("mixed: 'meet' -> meeting/meet in English (" + meet.surfaces.join(",") + ")", meet.surfaces.some(s => meet.sources[s] === "en"));
+mixed.mode = "gujlish";
+check("gujlish only: 'meet' has no English", Object.values(mixed.suggestDetailed("meet").sources).every(v => v !== "en"));
+mixed.mode = "mixed";
+check("'neelbhai' is not a corpus word", !mixed.bySurface["neelbhai"]);
+mixed.learnWord("neelbhai", 3);
+const nb = mixed.suggestDetailed("neelbh");
+check("personal word appears (" + nb.surfaces.join(",") + ")", nb.sources["neelbhai"] === "me");
+mixed.learnBigram("kem", "neelbhai", 5);
+check("personal bigram predicts (" + mixed.nextWord("kem").join(",") + ")", mixed.nextWord("kem").indexOf("neelbhai") >= 0);
+for (let i = 0; i < 3; i++) mixed.accept("thashe", "kem");
+check("accepting thashe after kem puts it first (" + mixed.suggest("th", "kem").join(",") + ")", mixed.suggest("th", "kem")[0] === "thashe");
+mixed.forgetPersonal();
+check("forget restores (" + mixed.suggest("th", "kem").join(",") + ")", mixed.suggest("th", "kem").join(",") === engine.suggest("th", "kem").join(",") && !mixed.bySurface["neelbhai"]);
+
+// 4. Latency: the thing the phone will feel.
 const probes = ["c", "ch", "che", "tha", "thay", "kem", "majam", "mjama", "sarkar", "gujar", "k", "a"];
 let worst = 0;
 for (let rep = 0; rep < 3; rep++) {

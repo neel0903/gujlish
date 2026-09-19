@@ -84,7 +84,7 @@ TRUST_HUMANS_AT = 3     # ... until Dakshina annotators have attested this much:
 GENERATED_TIEBREAK = 0.5  # then it is only a style vote, and is dropped
                           # outright if none of them agree with it
 FOLLOWERS_PER_WORD = 10
-MAX_BIGRAMS = 150_000
+MAX_BIGRAMS = 250_000
 
 # ---------------------------------------------------------------------------
 # Step A: Gujarati Wikipedia -> native-script unigram and bigram counts
@@ -264,20 +264,48 @@ def style_penalty(r):
 
 def extract_dakshina():
     """Pull just gu/lexicons out of the 2 GB tar, once."""
-    if os.path.isdir(os.path.join(DAKSHINA_DIR, "gu", "lexicons")):
+    have_lexicons = os.path.isdir(os.path.join(DAKSHINA_DIR, "gu", "lexicons"))
+    have_sentences = os.path.exists(os.path.join(DAKSHINA_DIR, ROMANIZED_FILE))
+    if have_lexicons and have_sentences:
         return True
     if not os.path.exists(DAKSHINA_TAR):
-        return False
+        return have_lexicons
     if os.path.getsize(DAKSHINA_TAR) != DAKSHINA_TAR_SIZE:
         print("Dakshina tar is incomplete, skipping it for this run", file=sys.stderr)
         return False
-    print("extracting gu/lexicons from the Dakshina tar ...", file=sys.stderr)
+    print("extracting gu/lexicons and gu/romanized from the Dakshina tar ...", file=sys.stderr)
     with tarfile.open(DAKSHINA_TAR) as tar:
         for m in tar:
-            if "/gu/lexicons/" in m.name and m.isfile():
+            if ("/gu/lexicons/" in m.name or m.name.endswith(ROMANIZED_FILE)) and m.isfile():
                 m.name = m.name.split("/", 1)[1]      # drop dakshina_dataset_v1.0/
                 tar.extract(m, DAKSHINA_DIR)
     return True
+
+
+ROMANIZED_FILE = "gu/romanized/gu.romanized.rejoined.aligned.cased_nopunct.tsv"
+
+
+def load_dakshina_sentences(table, human):
+    """10K Wikipedia sentences romanised by hand, token-aligned:
+    native<TAB>roman per line. Each aligned token is one more human
+    attestation, which extends counted spellings well past the 30K
+    words of the lexicon files."""
+    path = os.path.join(DAKSHINA_DIR, ROMANIZED_FILE)
+    if not os.path.exists(path):
+        return
+    n = 0
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) != 2 or " " in parts[0] or " " in parts[1]:
+                continue
+            native = normalise_native(parts[0])
+            roman = native and clean_roman(parts[1], native)
+            if native and roman:
+                table[native][roman] += 1
+                human[native] += 1
+                n += 1
+    print(f"Dakshina sentences: {n} aligned tokens", file=sys.stderr)
 
 
 def load_dakshina(table, human):
@@ -358,6 +386,7 @@ def build(top, out_path):
     human = collections.Counter()
     if extract_dakshina():
         load_dakshina(table, human)
+        load_dakshina_sentences(table, human)
     load_aksharantar(table)
     print(f"romanisation table: {len(table)} native words", file=sys.stderr)
 
@@ -475,7 +504,7 @@ def build(top, out_path):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--top", type=int, default=40000,
+    ap.add_argument("--top", type=int, default=80000,
                     help="keep this many corpus surfaces (seed words always kept)")
     ap.add_argument("--out", default="lexicon.tsv")
     ap.add_argument("--refresh-wiki", action="store_true",
