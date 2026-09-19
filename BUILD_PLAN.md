@@ -32,7 +32,11 @@ Windows with Python 3.12 — `python`, not `python3`):
 | `web/tester_template.html` | **Done.** The Phase 2 UI; `build_tester.py` inlines the engine and lexicon into it |
 | `build_tester.py` | **Done.** `python build_tester.py` → `tester.html` (1.4 MB, one file) + `web/expected.json` for the port test |
 | `web/test_port.js` | **Done.** `node web/test_port.js` — JS vs Python, plus latency (3.5 ms worst) |
-| `tester.html` | **Built.** Phase 2 web tester. Copy to the phone or serve it (below) |
+| `tester.html` | Phase 2 single-file tester. Superseded by the hosted PWA below; still builds |
+| `web/index.html`, `app.js`, `app.css`, `sw_template.js` | **Done.** The hosted PWA (Phase 2b). `gujlish.js` gained a personal dictionary and English mixed mode |
+| `build_site.py` | **Done.** `python build_site.py` → `docs/` (2.4 MB): hashed assets, manifest, icons, service worker |
+| `docs/` | **Built, committed.** What GitHub Pages serves. Never edit by hand |
+| `README.md`, `.gitignore` | Repo is git; `data/`, DBs and generated files are ignored |
 
 Verify the handoff landed intact:
 
@@ -229,6 +233,56 @@ Things to judge with it, in this order: (1) does the first chip after
 `kem`, `su`, `mane`, `hu` feel right, (2) does typing 2–3 letters of an
 ordinary word reach it, (3) do the spellings look like yours or like
 Wikipedia's. Note what jars; that is the Phase 4 / tuning list.
+
+## Phase 2b — hosted PWA (2026-09-19)
+
+Plan change: instead of waiting for a Mac, ship the web app as an
+installable PWA on free hosting and make it good enough to use daily.
+Built and verified locally in Chrome; deploy is the next step.
+
+**Hosting:** GitHub Pages from the `docs/` folder of the public repo
+`neel0903/gujlish` (Pages on a private repo needs a paid plan). URL will
+be `https://neel0903.github.io/gujlish/`. Deploy = `python build_site.py`,
+commit, push. First-time setup, once `gh auth login` has been run:
+
+```bash
+gh repo create gujlish --public --source . --push
+gh api -X POST repos/neel0903/gujlish/pages -f "source[branch]=main" -f "source[path]=/docs"
+```
+
+**What the app does now, beyond the tester:**
+
+- Installable (manifest + icons), offline (service worker; hashed assets
+  cached forever, `index.html` network-first so a deploy is picked up;
+  an "update ready" banner only when an old worker is still active).
+- Suggestion strip pinned above the on-screen keyboard via
+  `visualViewport`.
+- WhatsApp button (`wa.me/?text=`), Share (Web Share API), Copy.
+- Personal dictionary in IndexedDB: every accepted or space-committed
+  word and its pair with the previous word is learned. Words the corpus
+  never had become real candidates (marked with a green dot). Boost is
+  `25*min(n,3) + 10*ln(1+n)`, mirrored in `engine.py`, so a chat export
+  cannot drown the corpus. Export/import as JSON; forget all.
+- Learn from a WhatsApp chat export (.txt or the iPhone .zip, unzipped
+  in-browser with `DecompressionStream`), per-sender selection, never
+  uploaded. This is the intended fix for register: Wikipedia taught the
+  words, the chat teaches how Neel and his friends spell them.
+- English mixed mode (default) from FrequencyWords' top 20K, penalty 15
+  against Gujlish; also Gujlish-only / English-only in settings.
+- Lexicon raised to 80K surfaces; Dakshina's 10K hand-romanised
+  sentences (148K aligned tokens) added as human attestations.
+
+**Verified:** `node web/test_port.js` — 80,056/80,056 keys and 34/34
+trials identical to Python, plus mixed-mode and personal-dictionary
+checks; Chrome: install, typing, bigram prediction, English mixing,
+settings, chat learning UI, update flow.
+
+**Known follow-ups:** engine build on load is ~0.7 s on a PC (80K keys
+computed in JS), likely 1.5–2 s on a phone — precompute keys at build
+time if it feels slow. The WhatsApp export parser is untested against a
+real export; the regex handles both Android and iPhone line formats on
+paper. iOS PWA specifics (standalone-mode `wa.me` handoff, keyboard
+strip placement) need a real iPhone to confirm.
 
 ## Phase 3 — iOS
 
