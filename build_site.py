@@ -116,9 +116,12 @@ def main():
         "APP_CSS": (hashed("app.css", app_css), app_css),
     }
 
-    if os.path.isdir(OUT):
-        shutil.rmtree(OUT)
-    os.makedirs(OUT)
+    # Clear the contents rather than the folder: a dev server may have
+    # it open as its working directory.
+    os.makedirs(OUT, exist_ok=True)
+    for entry in os.listdir(OUT):
+        p = os.path.join(OUT, entry)
+        shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
     for _, (name, content) in names.items():
         with open(os.path.join(OUT, name), "w", encoding="utf-8") as fh:
             fh.write(content)
