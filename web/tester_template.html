@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gujlish">
+<meta name="color-scheme" content="light dark">
+<title>Gujlish tester</title>
+<style>
+  :root {
+    --bg: #f5f5f7; --fg: #111; --muted: #6b6b70; --card: #fff;
+    --line: #d9d9de; --chip: #e9e9ee; --chip-fg: #111; --accent: #0a66c2;
+    --accent-fg: #fff; --ok: #1a7f37;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101014; --fg: #f0f0f2; --muted: #9a9aa2; --card: #1b1b21;
+      --line: #2c2c34; --chip: #2a2a33; --chip-fg: #f0f0f2; --accent: #4c9aff;
+      --accent-fg: #0b0b0f; --ok: #3fb950;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); }
+  header { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 2px 10px; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 650; }
+  header .stats { color: var(--muted); font-size: 13px; }
+  textarea {
+    width: 100%; min-height: 128px; resize: vertical; padding: 12px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    font: inherit; font-size: 19px; outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .strip {
+    display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding: 10px 0 6px; min-height: 58px; scrollbar-width: none;
+  }
+  .strip::-webkit-scrollbar { display: none; }
+  .strip button {
+    flex: 0 0 auto; min-width: 64px; min-height: 44px; padding: 8px 14px; border-radius: 22px;
+    border: 0; background: var(--chip); color: var(--chip-fg); font: inherit; font-size: 18px;
+    touch-action: manipulation;
+  }
+  .strip button:first-child { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  .strip button:active { opacity: .7; }
+  .strip .empty { color: var(--muted); font-size: 14px; align-self: center; padding: 0 4px; }
+  .strip.predicted button:first-child { background: var(--chip); color: var(--chip-fg); font-weight: 400; }
+  .debug {
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--muted); padding: 2px 4px 8px; white-space: pre-wrap; word-break: break-word;
+  }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row button {
+    flex: 1 1 auto; min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); color: var(--fg); font: inherit; touch-action: manipulation;
+  }
+  .row button.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; font-weight: 600; }
+  .row button:active { opacity: .7; }
+  .note { color: var(--muted); font-size: 13px; margin: 14px 2px 0; }
+  .note b { color: var(--fg); font-weight: 600; }
+  .toast { color: var(--ok); font-size: 14px; margin-left: 6px; opacity: 0; transition: opacity .2s; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Gujlish</h1>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <textarea id="msg" placeholder="Type Gujlish here…" autocapitalize="off" autocomplete="off"
+            autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
+
+  <div class="strip" id="strip"><span class="empty">Start typing</span></div>
+
+  <div class="debug" id="debug"></div>
+
+  <div class="row">
+    <button class="primary" id="copy">Copy message</button>
+    <button id="backspace">⌫ word</button>
+    <button id="clear">Clear</button>
+    <span class="toast" id="toast">Copied</span>
+  </div>
+
+  <p class="note">
+    Tap a suggestion to take it. Space commits what you typed. After a space
+    the strip predicts the next word. Taps are remembered on this phone
+    (<b id="learned">0</b> learned) — <a href="#" id="forget">forget them</a>.
+    Everything runs on the device; nothing is sent anywhere.
+  </p>
+</main>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+/*__DATA__*/
+</script>
+<script>
+(function () {
+  "use strict";
+  var G = window.Gujlish;
+  var t0 = performance.now();
+  var engine = new G.Engine(GUJLISH_DATA.words, GUJLISH_DATA.bigrams);
+  var loadMs = Math.round(performance.now() - t0);
+
+  var LS_KEY = "gujlish.userCounts";
+  try { engine.userCounts = JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; } catch (e) { engine.userCounts = {}; }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var msg = $("msg"), strip = $("strip"), debug = $("debug"), toast = $("toast");
+
+  $("stats").textContent = GUJLISH_DATA.words.length.toLocaleString() + " words · " +
+    GUJLISH_DATA.bigramCount.toLocaleString() + " bigrams · " + loadMs + " ms load";
+
+  function learnedCount() {
+    var n = 0; for (var k in engine.userCounts) n += engine.userCounts[k];
+    $("learned").textContent = n;
+  }
+  function saveLearned() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(engine.userCounts)); } catch (e) {}
+    learnedCount();
+  }
+
+  // The word being typed is whatever follows the last whitespace; the
+  // previous word is the token before that. Caret is assumed at the end,
+  // which is how a phone keyboard is used.
+  function split() {
+    var text = msg.value;
+    var m = /(\S*)$/.exec(text);
+    var current = m ? m[1] : "";
+    var head = text.slice(0, text.length - current.length);
+    var prevMatch = /(\S+)\s*$/.exec(head);
+    return { head: head, current: current, prev: prevMatch ? prevMatch[1] : null };
+  }
+
+  function render() {
+    var s = split();
+    var t = performance.now();
+    var res, predicted = false;
+    if (s.current) {
+      res = engine.suggestDetailed(s.current, s.prev);
+    } else {
+      res = { surfaces: engine.nextWord(s.prev), sk: "", lk: "", tiers: null };
+      predicted = true;
+    }
+    var ms = (performance.now() - t).toFixed(1);
+
+    strip.innerHTML = "";
+    strip.classList.toggle("predicted", predicted);
+    if (!res.surfaces.length) {
+      var e = document.createElement("span");
+      e.className = "empty";
+      e.textContent = s.current ? "no match" : (s.prev ? "no prediction" : "Start typing");
+      strip.appendChild(e);
+    }
+    res.surfaces.forEach(function (surface) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = surface;
+      b.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
+      b.addEventListener("touchstart", function (ev) { ev.preventDefault(); take(surface); }, { passive: false });
+      b.addEventListener("click", function () { take(surface); });
+      strip.appendChild(b);
+    });
+
+    if (s.current) {
+      var tiers = res.tiers;
+      debug.textContent =
+        "typed " + JSON.stringify(s.current) + (s.prev ? "  after " + JSON.stringify(s.prev) : "") +
+        "\nstrict " + res.sk + "  loose " + res.lk +
+        "\nmatches " + (tiers.strict + tiers.loose + tiers.fuzzy) +
+        " (strict " + tiers.strict + " / loose " + tiers.loose + " / fuzzy " + tiers.fuzzy + ")  " + ms + " ms";
+    } else if (s.prev) {
+      debug.textContent = "predicting after " + JSON.stringify(s.prev) +
+        "  loose " + G.looseKey(s.prev, true) + "  " + res.surfaces.length + " followers  " + ms + " ms";
+    } else {
+      debug.textContent = "";
+    }
+  }
+
+  var lastTake = 0;
+  function take(surface) {
+    var now = Date.now();
+    if (now - lastTake < 300) return;      // touchstart + click double fire
+    lastTake = now;
+    var s = split();
+    msg.value = s.head + surface + " ";
+    engine.accept(surface);
+    saveLearned();
+    msg.focus();
+    render();
+  }
+
+  $("copy").addEventListener("click", function () {
+    var text = msg.value.trim();
+    var done = function () {
+      toast.classList.add("show");
+      setTimeout(function () { toast.classList.remove("show"); }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+    } else fallback();
+    function fallback() {
+      msg.focus(); msg.select();
+      try { document.execCommand("copy"); done(); } catch (e) {}
+    }
+  });
+  $("backspace").addEventListener("mousedown", function (ev) { ev.preventDefault(); });
+  $("backspace").addEventListener("click", function () {
+    var s = split();
+    if (s.current) msg.value = s.head;
+    else msg.value = s.head.replace(/\S+\s*$/, "");
+    msg.focus(); render();
+  });
+  $("clear").addEventListener("click", function () { msg.value = ""; msg.focus(); render(); });
+  $("forget").addEventListener("click", function (ev) {
+    ev.preventDefault();
+    engine.userCounts = {};
+    saveLearned(); render();
+  });
+
+  msg.addEventListener("input", render);
+  msg.addEventListener("keydown", function (ev) {
+    if (ev.key === "Tab") {
+      var first = strip.querySelector("button");
+      if (first) { ev.preventDefault(); take(first.textContent); }
+    }
+  });
+
+  learnedCount();
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Corpus inputs (2 GB) — see data/SOURCES.md for how to fetch them
+data/
+# Build outputs that are reproducible from the pipeline
+*.db
+__pycache__/
+web/lexicon.js
+web/expected.json
+lexicon.review.tsv
+tester.html
+# Editor / OS noise
+.vscode/
+Thumbs.db
+.DS_Store
