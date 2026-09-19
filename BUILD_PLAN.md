@@ -277,10 +277,27 @@ gh api -X POST repos/neel0903/gujlish/pages -f "source[branch]=main" -f "source[
 - Lexicon raised to 80K surfaces; Dakshina's 10K hand-romanised
   sentences (148K aligned tokens) added as human attestations.
 
-**Verified:** `node web/test_port.js` — 80,056/80,056 keys and 34/34
-trials identical to Python, plus mixed-mode and personal-dictionary
-checks; Chrome: install, typing, bigram prediction, English mixing,
-settings, chat learning UI, update flow.
+- **Autocorrect on space** (added the same day, at Neel's request:
+  "Avi gaye ghara" must become "Aavi gaya ghare"). `engine.correct()`
+  in both Python and JS: candidates are words with the same phonetic
+  key (gharey → ghare) or one letter away (gaye → gaya), scored like
+  suggestions plus a closeness bonus (+30 same key, +10 vowel-only
+  slip — the matra is where typing goes wrong), against a keep bias
+  for what was typed (+25 if it is a known word; an English word
+  defends itself with its own frequency in mixed mode). Never corrects
+  a known word with freq ≥ 60, or anything the user has taught it
+  (accepted or restored twice). The strip shows "↶ original" for one
+  tap of undo, which teaches the original. Capitalisation is kept.
+  Toggle in Settings. Two data fixes came out of the spec sentence:
+  the seed now spells આ-initial words with "aa" (aavi, aapo, aabhar…)
+  and attestations that write out a final schwa (ghara, gujarata) are
+  folded to the register's ghar, gujarat.
+
+**Verified:** `node web/test_port.js` — 80,055/80,055 keys, 34/34
+trials and 20/20 corrections identical to Python, plus mixed-mode,
+personal-dictionary and autocorrect checks; Chrome: install, typing,
+bigram prediction, English mixing, settings, chat learning UI, update
+flow, autocorrect with undo.
 
 **Known follow-ups:** engine build on load is ~0.7 s on a PC (80K keys
 computed in JS), likely 1.5–2 s on a phone — precompute keys at build
