@@ -1,17 +1,19 @@
-/* Gujlish PWA — UI, personal dictionary storage, WhatsApp import. */
+/* Gujlish PWA — UI, personal dictionary storage, WhatsApp import,
+   script preview, grammar suggestions. */
 (function () {
   "use strict";
-  var G = window.Gujlish;
+  var G = window.Gujlish, Grammar = window.GujlishGrammar, Reverse = window.GujlishReverse;
   var VERSION = window.GUJLISH_VERSION || "dev";
+  var FILES = window.GUJLISH_FILES || {};
   var $ = function (id) { return document.getElementById(id); };
 
   // ---------- engine ----------
   var t0 = performance.now();
-  var engine = new G.Engine(GUJLISH_DATA.words, GUJLISH_DATA.bigrams, window.GUJLISH_ENGLISH || []);
+  var engine = new G.Engine(GUJLISH_DATA.words, GUJLISH_DATA.bigrams, window.GUJLISH_ENGLISH || [], GUJLISH_DATA.trigrams);
   var loadMs = Math.round(performance.now() - t0);
 
   // ---------- settings ----------
-  var settings = { mode: "mixed", showDebug: false, autocorrect: true };
+  var settings = { mode: "mixed", showDebug: false, autocorrect: true, grammar: true, preview: true, sendAs: "gujlish" };
   try { Object.assign(settings, JSON.parse(localStorage.getItem("gujlish.settings") || "{}")); } catch (e) {}
   function saveSettings() { try { localStorage.setItem("gujlish.settings", JSON.stringify(settings)); } catch (e) {} }
   engine.mode = settings.mode;
@@ -47,13 +49,13 @@
     });
   }
 
-  var personal = { words: {}, bigrams: {}, sources: [] };
+  var personal = { words: {}, bigrams: {}, trigrams: {}, sources: [] };
   var saveTimer = null;
   function savePersonal() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function () {
       var snap = engine.personalSnapshot();
-      personal.words = snap.words; personal.bigrams = snap.bigrams;
+      personal.words = snap.words; personal.bigrams = snap.bigrams; personal.trigrams = snap.trigrams;
       dbSet("personal", personal).catch(function () {});
       updateLearnedLine();
     }, 400);
@@ -75,7 +77,7 @@
   } catch (e) {}
 
   dbGet("personal").then(function (data) {
-    if (data) personal = data;
+    if (data) { personal = data; personal.trigrams = personal.trigrams || {}; personal.sources = personal.sources || []; }
     engine.loadPersonal(personal);
     updateLearnedLine();
     render();
@@ -83,17 +85,31 @@
 
   // ---------- typing ----------
   var msg = $("msg"), strip = $("strip"), stripWrap = $("stripWrap"), debug = $("debug"), toast = $("toast");
+  var preview = $("preview"), grammarBox = $("grammar");
   $("stats").textContent = GUJLISH_DATA.words.length.toLocaleString() + " words · " + loadMs + " ms";
   $("version").textContent = VERSION;
   debug.hidden = !settings.showDebug;
 
+  // The word being typed is what follows the last whitespace; the two
+  // words before it drive the context. Caret is assumed at the end.
   function split() {
     var text = msg.value;
     var m = /(\S*)$/.exec(text);
     var current = m ? m[1] : "";
     var head = text.slice(0, text.length - current.length);
-    var prevMatch = /(\S+)\s*$/.exec(head);
-    return { head: head, current: current, prev: prevMatch ? prevMatch[1] : null };
+    var prevMatch = /(?:(\S+)\s+)?(\S+)\s*$/.exec(head);
+    return { head: head, current: current, prev: prevMatch ? prevMatch[2] : null, prev2: prevMatch ? prevMatch[1] || null : null };
+  }
+
+  function chip(label, className, onTap) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.className = className;
+    b.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
+    b.addEventListener("touchstart", function (ev) { ev.preventDefault(); onTap(); }, { passive: false });
+    b.addEventListener("click", onTap);
+    return b;
   }
 
   function render() {
@@ -101,9 +117,9 @@
     var t = performance.now();
     var res, predicted = false;
     if (s.current) {
-      res = engine.suggestDetailed(s.current, s.prev);
+      res = engine.suggestDetailed(s.current, s.prev, s.prev2);
     } else {
-      res = { surfaces: engine.nextWord(s.prev), sources: {}, sk: "", lk: "", tiers: null };
+      res = { surfaces: engine.nextWord(s.prev, s.prev2), sources: {}, sk: "", lk: "", tiers: null };
       predicted = true;
     }
     var ms = (performance.now() - t).toFixed(1);
@@ -111,14 +127,8 @@
     strip.innerHTML = "";
     strip.classList.toggle("predicted", predicted);
     if (lastCorrection && !s.current) {
-      var u = document.createElement("button");
-      u.type = "button";
-      u.className = "undo";
-      u.textContent = lastCorrection.original;
+      var u = chip(lastCorrection.original, "undo", undoCorrection);
       u.title = "Keep what you typed";
-      u.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
-      u.addEventListener("touchstart", function (ev) { ev.preventDefault(); undoCorrection(); }, { passive: false });
-      u.addEventListener("click", undoCorrection);
       strip.appendChild(u);
     }
     if (!res.surfaces.length && !lastCorrection) {
@@ -128,30 +138,85 @@
       strip.appendChild(e);
     }
     res.surfaces.forEach(function (surface, i) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.textContent = surface;
-      b.className = (i === 0 ? "first " : "") + (res.sources[surface] || "");
-      b.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
-      b.addEventListener("touchstart", function (ev) { ev.preventDefault(); take(surface); }, { passive: false });
-      b.addEventListener("click", function () { take(surface); });
-      strip.appendChild(b);
+      strip.appendChild(chip(surface, (i === 0 ? "first " : "") + (res.sources[surface] || ""), function () { take(surface); }));
     });
+
+    renderPreview();
+    renderGrammar();
 
     if (!settings.showDebug) return;
     if (s.current) {
       var ti = res.tiers;
       debug.textContent =
-        "typed " + JSON.stringify(s.current) + (s.prev ? "  after " + JSON.stringify(s.prev) : "") +
+        "typed " + JSON.stringify(s.current) + (s.prev ? "  after " + JSON.stringify((s.prev2 ? s.prev2 + " " : "") + s.prev) : "") +
         "\nstrict " + res.sk + "  loose " + res.lk +
         "\nmatches strict " + ti.strict + " / loose " + ti.loose + " / fuzzy " + ti.fuzzy +
         " / english " + ti.english + "  " + ms + " ms";
     } else if (s.prev) {
-      debug.textContent = "predicting after " + JSON.stringify(s.prev) + "  loose " +
+      debug.textContent = "predicting after " + JSON.stringify((s.prev2 ? s.prev2 + " " : "") + s.prev) + "  loose " +
         G.looseKey(s.prev, true) + "  " + res.surfaces.length + " followers  " + ms + " ms";
     } else debug.textContent = "";
   }
 
+  // ---------- Gujarati script preview ----------
+  var nativeLoading = false;
+  function ensureNative(cb) {
+    if (window.GUJLISH_NATIVE || !FILES.native) return cb();
+    if (nativeLoading) return;
+    nativeLoading = true;
+    var sc = document.createElement("script");
+    sc.src = FILES.native;
+    sc.onload = function () { nativeLoading = false; cb(); };
+    sc.onerror = function () { nativeLoading = false; };
+    document.head.appendChild(sc);
+  }
+  function toScript(text) {
+    var N = window.GUJLISH_NATIVE || {};
+    return text.replace(/[A-Za-z]+/g, function (word) {
+      var lower = word.toLowerCase();
+      if (N[lower]) return N[lower];
+      if (engine.englishSet[lower] && !engine.bySurface[lower]) return word;   // English stays English
+      return Reverse.toGujarati(lower) || word;
+    });
+  }
+  function renderPreview() {
+    if (!settings.preview) { preview.hidden = true; return; }
+    preview.hidden = false;
+    if (!window.GUJLISH_NATIVE) { ensureNative(renderPreview); }
+    var text = msg.value;
+    preview.textContent = text.trim() ? toScript(text) : "";
+    preview.classList.toggle("placeholder", !text.trim());
+    if (!text.trim()) preview.textContent = "ગુજરાતી લિપિમાં અહીં દેખાશે";
+  }
+
+  // ---------- grammar ----------
+  function renderGrammar() {
+    grammarBox.innerHTML = "";
+    if (!settings.grammar) { grammarBox.hidden = true; return; }
+    var issues = Grammar.check(msg.value, engine);
+    grammarBox.hidden = !issues.length;
+    issues.forEach(function (iss) {
+      var b = chip(iss.from + " → " + iss.to, "fix", function () { applyFix(iss, false); });
+      b.title = iss.why;
+      grammarBox.appendChild(b);
+      if (iss.alt) {
+        var a = chip(iss.from + " → " + iss.alt, "fix", function () { applyFix(iss, true); });
+        a.title = iss.why;
+        grammarBox.appendChild(a);
+      }
+    });
+  }
+  function applyFix(iss, useAlt) {
+    var to = useAlt && iss.alt ? iss.alt : iss.to;
+    msg.value = Grammar.apply(msg.value, iss, useAlt);
+    lastValue = msg.value; lastCorrection = null;
+    engine.learnWord(to, 1);
+    savePersonal();
+    msg.focus();
+    render();
+  }
+
+  // ---------- commit, autocorrect, undo ----------
   var lastTake = 0;
   function take(surface) {
     var now = Date.now();
@@ -161,23 +226,18 @@
     msg.value = s.head + surface + " ";
     lastValue = msg.value;
     lastCorrection = null;
-    engine.accept(surface, s.prev);
+    engine.accept(surface, s.prev, s.prev2);
     savePersonal();
     msg.focus();
     render();
   }
 
-  // Keep the typist's capitalisation: "Avi" -> "Aavi", "AVI" -> "AAVI".
   function matchCase(typed, fix) {
     if (typed.length > 1 && typed === typed.toUpperCase() && /[A-Z]/.test(typed)) return fix.toUpperCase();
     if (/^[A-Z]/.test(typed)) return fix.charAt(0).toUpperCase() + fix.slice(1);
     return fix;
   }
 
-  // Space (or a newline) commits the typed word. With autocorrect on,
-  // a wrong spelling is replaced by the word as the Gujarati script
-  // spells it, and the strip offers the original back for one tap.
-  // What gets learned is the committed word, so typos don't stick.
   var lastValue = "", lastCorrection = null;
   function undoCorrection() {
     var c = lastCorrection;
@@ -200,18 +260,18 @@
       var m = /(\S+)(\s)$/.exec(v);
       var clean = m && G.cleanSurface(m[1]);
       if (clean) {
-        var before = /(\S+)\s+\S+\s$/.exec(v);
-        var prev = before ? before[1] : null;
-        var fix = settings.autocorrect ? engine.correct(m[1], prev) : null;
+        var before = /(?:(\S+)\s+)?(\S+)\s+\S+\s$/.exec(v);
+        var prev = before ? before[2] : null, prev2 = before ? before[1] || null : null;
+        var fix = settings.autocorrect ? engine.correct(m[1], prev, prev2) : null;
         if (fix) {
           var shown = matchCase(m[1], fix);
           msg.value = v.slice(0, v.length - m[0].length) + shown + m[2];
           v = msg.value;
           lastCorrection = { original: m[1], replacement: shown, prev: prev };
-          engine.accept(fix, prev);
+          engine.accept(fix, prev, prev2);
         } else {
           lastCorrection = null;
-          engine.accept(clean, prev);
+          engine.accept(clean, prev, prev2);
         }
         savePersonal();
       }
@@ -221,7 +281,7 @@
   });
   msg.addEventListener("keydown", function (ev) {
     if (ev.key === "Tab") {
-      var first = strip.querySelector("button");
+      var first = strip.querySelector("button:not(.undo)");
       if (first) { ev.preventDefault(); take(first.textContent); }
     }
   });
@@ -245,7 +305,10 @@
     toast.classList.add("show");
     setTimeout(function () { toast.classList.remove("show"); }, 1400);
   }
-  function messageText() { return msg.value.trim(); }
+  function messageText() {
+    var text = msg.value.trim();
+    return settings.sendAs === "script" && text ? toScript(text) : text;
+  }
 
   $("copy").addEventListener("click", function () {
     var text = messageText();
@@ -285,10 +348,12 @@
   // ---------- settings sheet ----------
   var dlg = $("settings");
   function openSettings() {
-    var radios = dlg.querySelectorAll("input[name=mode]");
-    radios.forEach(function (r) { r.checked = r.value === settings.mode; });
+    dlg.querySelectorAll("input[name=mode]").forEach(function (r) { r.checked = r.value === settings.mode; });
+    dlg.querySelectorAll("input[name=sendAs]").forEach(function (r) { r.checked = r.value === settings.sendAs; });
     $("showDebug").checked = settings.showDebug;
     $("autocorrect").checked = settings.autocorrect;
+    $("grammarOn").checked = settings.grammar;
+    $("previewOn").checked = settings.preview;
     if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
   }
   $("openSettings").addEventListener("click", openSettings);
@@ -297,9 +362,13 @@
     $("learnSection").scrollIntoView({ block: "start" });
   });
   dlg.addEventListener("change", function (ev) {
-    if (ev.target.name === "mode") { settings.mode = ev.target.value; engine.mode = settings.mode; }
-    if (ev.target.id === "showDebug") { settings.showDebug = ev.target.checked; debug.hidden = !settings.showDebug; }
-    if (ev.target.id === "autocorrect") settings.autocorrect = ev.target.checked;
+    var el = ev.target;
+    if (el.name === "mode") { settings.mode = el.value; engine.mode = settings.mode; }
+    if (el.name === "sendAs") settings.sendAs = el.value;
+    if (el.id === "showDebug") { settings.showDebug = el.checked; debug.hidden = !settings.showDebug; }
+    if (el.id === "autocorrect") settings.autocorrect = el.checked;
+    if (el.id === "grammarOn") settings.grammar = el.checked;
+    if (el.id === "previewOn") settings.preview = el.checked;
     saveSettings(); render();
   });
   dlg.addEventListener("close", function () { render(); });
@@ -308,7 +377,7 @@
   $("exportBtn").addEventListener("click", function () {
     var snap = engine.personalSnapshot();
     var data = { app: "gujlish", version: VERSION, exported: new Date().toISOString(),
-                 words: snap.words, bigrams: snap.bigrams, sources: personal.sources };
+                 words: snap.words, bigrams: snap.bigrams, trigrams: snap.trigrams, sources: personal.sources };
     var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
     var file = new File([blob], "gujlish-learned.json", { type: "application/json" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -325,7 +394,7 @@
     f.text().then(function (text) {
       var data = JSON.parse(text);
       if (!data || data.app !== "gujlish") throw new Error("not a Gujlish export");
-      engine.loadPersonal({ words: data.words, bigrams: data.bigrams });
+      engine.loadPersonal({ words: data.words, bigrams: data.bigrams, trigrams: data.trigrams });
       (data.sources || []).forEach(function (s) { personal.sources.push(s); });
       savePersonal(); render();
       $("learnedDetail").textContent = "Imported " + Object.keys(data.words || {}).length + " words.";
@@ -334,7 +403,7 @@
   });
   $("forgetBtn").addEventListener("click", function () {
     engine.forgetPersonal();
-    personal = { words: {}, bigrams: {}, sources: [] };
+    personal = { words: {}, bigrams: {}, trigrams: {}, sources: [] };
     dbSet("personal", personal).catch(function () {});
     updateLearnedLine(); render();
     $("learnedDetail").textContent = "Forgotten.";
@@ -426,7 +495,7 @@
     if (!pendingChat) return;
     var allowed = {};
     $("senders").querySelectorAll("input:checked").forEach(function (cb) { allowed[cb.value] = true; });
-    var words = {}, bigrams = {}, used = 0;
+    var words = {}, bigrams = {}, trigrams = {}, used = 0;
     pendingChat.messages.forEach(function (m) {
       if (!allowed[m.sender] || SKIP_RE.test(m.text)) return;
       var toks = (m.text.toLowerCase().match(/[a-z']+/g) || [])
@@ -437,10 +506,11 @@
       for (var i = 0; i < toks.length; i++) {
         words[toks[i]] = (words[toks[i]] || 0) + 1;
         if (i) { var k = toks[i - 1] + " " + toks[i]; bigrams[k] = (bigrams[k] || 0) + 1; }
+        if (i > 1) { var k3 = toks[i - 2] + " " + toks[i - 1] + " " + toks[i]; trigrams[k3] = (trigrams[k3] || 0) + 1; }
       }
     });
     var t = performance.now();
-    engine.loadPersonal({ words: words, bigrams: bigrams });
+    engine.loadPersonal({ words: words, bigrams: bigrams, trigrams: trigrams });
     personal.sources.push({ name: pendingChat.name, date: new Date().toISOString().slice(0, 10), messages: used });
     savePersonal(); render();
     $("learnResult").textContent = "Learned " + Object.keys(words).length + " words and " +

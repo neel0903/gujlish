@@ -3,16 +3,16 @@
  *
  * phonetics and the core ranking are line-for-line with phonetics.py and
  * engine.py; test_port.js checks this against the Python on every key
- * in the lexicon and every trial. Port the Swift version from the
- * Python and test it the same way.
+ * in the lexicon, every trial and every correction. Port the Swift
+ * version from the Python and test it the same way.
  *
  * Beyond the Python reference this engine also has:
- *   - a personal dictionary: words and bigrams learned from what you
- *     accept and from imported chats. Personal words that the corpus
- *     never saw become real candidates, not just score bonuses.
- *   - English mixed mode: a plain-prefix English list competes with
- *     the Gujlish candidates at a fixed penalty, so "meet" shows
- *     meeting while "kem" never shows an English word.
+ *   - a personal dictionary: words, bigrams and trigrams learned from
+ *     what you accept, type and import. Personal words the corpus never
+ *     saw become real candidates, not just score bonuses.
+ *   - English mixed mode: a plain-prefix English list competes with the
+ *     Gujlish candidates at a fixed penalty, so "meet" shows meeting
+ *     while "kem" never shows an English word.
  *
  * Structural difference from engine.py: the lexicon is in memory sorted
  * by frequency, so "ORDER BY freq DESC LIMIT n" is "scan in order, stop
@@ -81,6 +81,7 @@
 
   var MAX_SUGGESTIONS = 5;
   var ENGLISH_PENALTY = 15;
+  var CORRECT_MARGIN = 20;
 
   // How much a word you have accepted or typed moves up. Three
   // acceptances put a word firmly ahead of the corpus; beyond that it
@@ -93,7 +94,7 @@
   function personalFreq(count) {
     return Math.min(100, Math.round(30 + 12 * Math.log(1 + count)));
   }
-  // Bigram weight (1..100) for a pair learned from you.
+  // Bigram/trigram weight (1..100) for a pair learned from you.
   function personalWeight(count) {
     return Math.min(100, Math.round(20 * Math.min(count, 3) + 10 * Math.log(1 + count)));
   }
@@ -113,41 +114,70 @@
     return true;
   }
 
+  // "gaye" vs "gaya": one vowel differs. The barakhadi is where typing
+  // goes wrong most — the matra — so a vowel-only slip is the most
+  // likely error and gets a bonus over consonant edits.
+  function isVowelSwap(a, b) {
+    if (a.length !== b.length) return false;
+    var diff = -1;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) { if (diff >= 0) return false; diff = i; }
+    }
+    return diff >= 0 && VOWELS.indexOf(a[diff]) >= 0 && VOWELS.indexOf(b[diff]) >= 0;
+  }
+
   function cleanSurface(s) {
     return (s || "").toLowerCase().replace(/[^a-z]/g, "");
   }
 
+  function copyTable(src) {
+    var out = {};
+    for (var k in src) out[k] = src[k].slice();
+    return out;
+  }
+
   // ---------- engine ----------
 
-  // words:   [[surface, freq], ...] sorted by freq desc
-  // bigrams: { prevIndex: [nextIndex, weight, nextIndex, weight, ...] }
-  // english: [[word, freq], ...] sorted by freq desc (optional)
-  function Engine(words, bigrams, english) {
+  // words:    [[surface, freq, strictKey?, looseKey?], ...] sorted by freq desc
+  // bigrams:  { prevId: [nextId, weight, nextId, weight, ...] }
+  // english:  [[word, freq], ...] sorted by freq desc (optional)
+  // trigrams: { "prev2Id prev1Id": [nextId, weight, ...] } (optional)
+  function Engine(words, bigrams, english, trigrams) {
     this.words = [];        // scan order (freq desc)
     this.byId = [];         // id -> entry
     this.bySurface = {};
     this.byLoose = {};
-    this.followers = {};    // id -> [nextId, w, ...]
     this.baseBigrams = bigrams || {};
-    this.userCounts = {};   // surface -> count (accepted, typed, imported)
-    this.personalBigrams = {};  // "prev next" -> count
-    this.mode = "mixed";    // mixed | gujlish | english
+    this.baseTrigrams = trigrams || {};
+    this.userCounts = {};        // surface -> count (accepted, typed, imported)
+    this.personalBigrams = {};   // "prev next" -> count
+    this.personalTrigrams = {};  // "prev2 prev1 next" -> count
+    this.mode = "mixed";         // mixed | gujlish | english
     this.sorted = true;
-    for (var i = 0; i < words.length; i++) this._addWord(words[i][0], words[i][1], false);
-    for (var k in this.baseBigrams) this.followers[k] = this.baseBigrams[k].slice();
+    for (var i = 0; i < words.length; i++) {
+      var w = words[i];
+      this._addWord(w[0], w[1], false, w[2], w[3]);
+    }
+    this._resetContext();
     this.english = [];
+    this.englishSet = {};
     if (english) this.setEnglish(english);
   }
 
-  Engine.prototype._addWord = function (surface, freq, personal) {
+  Engine.prototype._addWord = function (surface, freq, personal, sk, lk) {
     var id = this.byId.length;
-    var w = { id: id, surface: surface, freq: freq, sk: strictKey(surface, true),
-              lk: looseKey(surface, true), personal: personal };
+    var w = { id: id, surface: surface, freq: freq, personal: personal,
+              sk: sk || strictKey(surface, true), lk: lk || looseKey(surface, true) };
     this.byId.push(w);
     this.words.push(w);
     this.bySurface[surface] = w;
     (this.byLoose[w.lk] || (this.byLoose[w.lk] = [])).push(id);
     return w;
+  };
+
+  Engine.prototype._resetContext = function () {
+    this.followers = copyTable(this.baseBigrams);
+    this.tri = copyTable(this.baseTrigrams);
   };
 
   Engine.prototype._ensureSorted = function () {
@@ -212,16 +242,44 @@
     return out;
   };
 
-  Engine.prototype.bigramWeights = function (prevWord) {
+  Engine.prototype.bigramWeights = function (prev1) {
     var weights = {};
-    if (!prevWord) return weights;
-    var ids = this.byLoose[looseKey(prevWord, true)] || [];
+    if (!prev1) return weights;
+    var ids = this.byLoose[looseKey(prev1, true)] || [];
     for (var i = 0; i < ids.length; i++) {
       var f = this.followers[ids[i]];
       if (!f) continue;
-      for (var j = 0; j < f.length; j += 2) weights[f[j]] = f[j + 1];
+      for (var j = 0; j < f.length; j += 2) {
+        if (!(weights[f[j]] >= f[j + 1])) weights[f[j]] = f[j + 1];
+      }
     }
     return weights;
+  };
+
+  Engine.prototype.trigramWeights = function (prev2, prev1) {
+    var weights = {};
+    if (!prev1 || !prev2) return weights;
+    var ids2 = this.byLoose[looseKey(prev2, true)] || [];
+    var ids1 = this.byLoose[looseKey(prev1, true)] || [];
+    for (var a = 0; a < ids2.length; a++) {
+      for (var b = 0; b < ids1.length; b++) {
+        var f = this.tri[ids2[a] + " " + ids1[b]];
+        if (!f) continue;
+        for (var j = 0; j < f.length; j += 2) {
+          if (!(weights[f[j]] >= f[j + 1])) weights[f[j]] = f[j + 1];
+        }
+      }
+    }
+    return weights;
+  };
+
+  // id -> score contribution from the words before.
+  Engine.prototype.context = function (prev1, prev2) {
+    var ctx = {}, id;
+    var bi = this.bigramWeights(prev1), tri = this.trigramWeights(prev2, prev1);
+    for (id in bi) ctx[id] = (ctx[id] || 0) + bi[id] * 4;
+    for (id in tri) ctx[id] = (ctx[id] || 0) + tri[id] * 6;
+    return ctx;
   };
 
   function notIn(rows, seen) {
@@ -233,11 +291,11 @@
 
   // Returns { surfaces, sources, sk, lk, tiers: {strict, loose, fuzzy, english} }.
   // sources[surface] is "gu", "en" or "me" (a personal word).
-  Engine.prototype.suggestDetailed = function (typed, prevWord) {
+  Engine.prototype.suggestDetailed = function (typed, prev1, prev2) {
     var typedClean = cleanSurface(typed);
     var sk = strictKey(typed, true), lk = looseKey(typed, true);
     var empty = { surfaces: [], sources: {}, sk: "", lk: "", tiers: { strict: 0, loose: 0, fuzzy: 0, english: 0 } };
-    if (!sk) { empty.surfaces = this.nextWord(prevWord); return empty; }
+    if (!sk) { empty.surfaces = this.nextWord(prev1, prev2); return empty; }
 
     var scored = [], src = {};
     var strictRows = [], looseRows = [], fuzzyRows = [], engRows = [];
@@ -265,13 +323,13 @@
         tiers.push([fuzzyRows, 60]);
       }
 
-      var weights = this.bigramWeights(prevWord);
+      var ctx = this.context(prev1, prev2);
       for (var t = 0; t < tiers.length; t++) {
         var rows = tiers[t][0], penalty = tiers[t][1];
         for (var i = 0; i < rows.length; i++) {
           var r = rows[i];
           var score = r.freq - penalty;
-          score += (weights[r.id] || 0) * 4;
+          score += ctx[r.id] || 0;
           score += userBoost(this.userCounts[r.surface]);
           score -= (r.lk.length - lk.length) * 3;
           if (r.sk === sk) score += 40;
@@ -313,44 +371,28 @@
                       fuzzy: fuzzyRows.length, english: engRows.length } };
   };
 
-  Engine.prototype.suggest = function (typed, prevWord) {
-    return this.suggestDetailed(typed, prevWord).surfaces;
+  Engine.prototype.suggest = function (typed, prev1, prev2) {
+    return this.suggestDetailed(typed, prev1, prev2).surfaces;
   };
 
-  Engine.prototype.nextWord = function (prevWord) {
-    if (!prevWord) return [];
-    var ids = this.byLoose[looseKey(prevWord, true)] || [];
+  Engine.prototype.nextWord = function (prev1, prev2) {
+    if (!prev1) return [];
+    var bi = this.bigramWeights(prev1), tri = this.trigramWeights(prev2, prev1);
+    var scores = {}, id;
+    for (id in bi) scores[id] = (scores[id] || 0) + bi[id];
+    for (id in tri) scores[id] = (scores[id] || 0) + tri[id] * 1.5;
     var cands = [];
-    for (var i = 0; i < ids.length; i++) {
-      var f = this.followers[ids[i]];
-      if (!f) continue;
-      for (var j = 0; j < f.length; j += 2) cands.push([f[j + 1], this.byId[f[j]].surface]);
-    }
-    cands.sort(function (a, b) { return b[0] - a[0]; });
-    var out = [], used = {};
-    for (i = 0; i < cands.length && out.length < MAX_SUGGESTIONS; i++) {
-      if (used[cands[i][1]]) continue;
-      used[cands[i][1]] = true;
-      out.push(cands[i][1]);
-    }
+    for (id in scores) cands.push([scores[id], this.byId[id].surface]);
+    cands.sort(function (a, b) {
+      if (a[0] !== b[0]) return b[0] - a[0];
+      return a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0;
+    });
+    var out = [];
+    for (var i = 0; i < cands.length && out.length < MAX_SUGGESTIONS; i++) out.push(cands[i][1]);
     return out;
   };
 
   // ---------- autocorrect ----------
-
-  var CORRECT_MARGIN = 20;
-
-  // "gaye" vs "gaya": one vowel differs. The barakhadi is where typing
-  // goes wrong most — the matra — so a vowel-only slip is the most
-  // likely error and gets a bonus over consonant edits.
-  function isVowelSwap(a, b) {
-    if (a.length !== b.length) return false;
-    var diff = -1;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] !== b[i]) { if (diff >= 0) return false; diff = i; }
-    }
-    return diff >= 0 && VOWELS.indexOf(a[diff]) >= 0 && VOWELS.indexOf(b[diff]) >= 0;
-  }
 
   // What the committed word should have been, or null to leave it.
   // Mirrors GujlishEngine.correct in engine.py. Candidates are words
@@ -362,7 +404,7 @@
   // mode an English word defends itself with its own frequency, so
   // "meeting" and "gate" stay but "avi" (a video format) still becomes
   // aavi.
-  Engine.prototype.correct = function (typed, prevWord) {
+  Engine.prototype.correct = function (typed, prev1, prev2) {
     var clean = cleanSurface(typed);
     if (clean.length < 3) return null;
     var known = this.bySurface[clean];
@@ -370,9 +412,9 @@
     if (uc >= 2) return null;
     if (known && !known.personal && known.freq >= 60) return null;
 
-    var weights = this.bigramWeights(prevWord);
+    var ctx = this.context(prev1, prev2);
     var keep = 30;
-    if (known && !known.personal) keep = known.freq + (weights[known.id] || 0) * 4 + userBoost(uc) + 25;
+    if (known && !known.personal) keep = known.freq + (ctx[known.id] || 0) + userBoost(uc) + 25;
     var eng = this.englishSet && this.mode !== "gujlish" ? this.englishSet[clean] : 0;
     if (eng) keep = Math.max(keep, eng - ENGLISH_PENALTY + userBoost(uc) + 25);
 
@@ -393,7 +435,7 @@
       w = this.byId[id];
       if (w.surface === clean) continue;
       if (w.personal && (this.userCounts[w.surface] || 0) < 2) continue;
-      var s = w.freq + (weights[w.id] || 0) * 4 + userBoost(this.userCounts[w.surface]) + cands[id];
+      var s = w.freq + (ctx[w.id] || 0) + userBoost(this.userCounts[w.surface]) + cands[id];
       if (!best || s > best.score || (s === best.score && w.surface < best.surface)) best = { surface: w.surface, score: s };
     }
     if (!best || best.score - keep < CORRECT_MARGIN) return null;
@@ -418,6 +460,13 @@
     }
   };
 
+  function mergeFollower(list, nextId, weight) {
+    for (var j = 0; j < list.length; j += 2) {
+      if (list[j] === nextId) { if (weight > list[j + 1]) list[j + 1] = weight; return; }
+    }
+    list.push(nextId, weight);
+  }
+
   Engine.prototype.learnBigram = function (prev, next, count) {
     prev = cleanSurface(prev); next = cleanSurface(next);
     var p = this.bySurface[prev], n = this.bySurface[next];
@@ -425,38 +474,50 @@
     var key = prev + " " + next;
     var total = (this.personalBigrams[key] || 0) + (count || 1);
     this.personalBigrams[key] = total;
-    var weight = personalWeight(total);
-    var f = this.followers[p.id] || (this.followers[p.id] = []);
-    for (var j = 0; j < f.length; j += 2) {
-      if (f[j] === n.id) { if (weight > f[j + 1]) f[j + 1] = weight; return; }
-    }
-    f.push(n.id, weight);
+    mergeFollower(this.followers[p.id] || (this.followers[p.id] = []), n.id, personalWeight(total));
+  };
+
+  Engine.prototype.learnTrigram = function (prev2, prev1, next, count) {
+    prev2 = cleanSurface(prev2); prev1 = cleanSurface(prev1); next = cleanSurface(next);
+    var a = this.bySurface[prev2], b = this.bySurface[prev1], n = this.bySurface[next];
+    if (!a || !b || !n) return;
+    var key = prev2 + " " + prev1 + " " + next;
+    var total = (this.personalTrigrams[key] || 0) + (count || 1);
+    this.personalTrigrams[key] = total;
+    var k = a.id + " " + b.id;
+    mergeFollower(this.tri[k] || (this.tri[k] = []), n.id, personalWeight(total));
   };
 
   // Called when the user takes a suggestion or commits a typed word.
-  Engine.prototype.accept = function (surface, prevWord) {
+  Engine.prototype.accept = function (surface, prev1, prev2) {
     this.learnWord(surface, 1);
-    if (prevWord) this.learnBigram(prevWord, surface, 1);
+    if (prev1) this.learnBigram(prev1, surface, 1);
+    if (prev1 && prev2) this.learnTrigram(prev2, prev1, surface, 1);
   };
 
-  // { words: {surface: count}, bigrams: {"prev next": count} }
+  // { words: {surface: count}, bigrams: {"a b": count}, trigrams: {"a b c": count} }
   Engine.prototype.loadPersonal = function (data) {
     if (!data) return;
-    var words = data.words || {}, bigrams = data.bigrams || {}, k;
+    var words = data.words || {}, bigrams = data.bigrams || {}, trigrams = data.trigrams || {}, k, p;
     for (k in words) this.learnWord(k, words[k]);
     for (k in bigrams) {
-      var parts = k.split(" ");
-      if (parts.length === 2) this.learnBigram(parts[0], parts[1], bigrams[k]);
+      p = k.split(" ");
+      if (p.length === 2) this.learnBigram(p[0], p[1], bigrams[k]);
+    }
+    for (k in trigrams) {
+      p = k.split(" ");
+      if (p.length === 3) this.learnTrigram(p[0], p[1], p[2], trigrams[k]);
     }
   };
 
   Engine.prototype.personalSnapshot = function () {
-    return { words: this.userCounts, bigrams: this.personalBigrams };
+    return { words: this.userCounts, bigrams: this.personalBigrams, trigrams: this.personalTrigrams };
   };
 
   Engine.prototype.forgetPersonal = function () {
     this.userCounts = {};
     this.personalBigrams = {};
+    this.personalTrigrams = {};
     var keep = [];
     for (var i = 0; i < this.words.length; i++) if (!this.words[i].personal) keep.push(this.words[i]);
     this.words = keep;
@@ -467,8 +528,7 @@
       this.bySurface[w.surface] = w;
       (this.byLoose[w.lk] || (this.byLoose[w.lk] = [])).push(w.id);
     }
-    this.followers = {};
-    for (var k in this.baseBigrams) this.followers[k] = this.baseBigrams[k].slice();
+    this._resetContext();
     this.sorted = false;
   };
 

@@ -72,6 +72,12 @@ DAKSHINA_TAR_SIZE = 2008340480          # complete download is exactly this
 DAKSHINA_DIR = os.path.join(DATA, "dakshina")
 WIKI_UNIGRAMS = os.path.join(DATA, "guwiki.unigrams.tsv")
 WIKI_BIGRAMS = os.path.join(DATA, "guwiki.bigrams.tsv")
+WIKI_TRIGRAMS = os.path.join(DATA, "guwiki.trigrams.tsv")
+
+MIN_TRIGRAM_COUNT = 3
+TRIGRAM_BIGRAM_FLOOR = 5   # count trigrams only over already-common bigrams
+CONTEXTS_PER_PAIR = 8
+MAX_TRIGRAMS = 200_000
 
 MIN_WORD_COUNT = 2      # native word must occur this often in the wiki
 MIN_BIGRAM_COUNT = 3
@@ -182,6 +188,49 @@ def count_wiki(dump_path):
           f"skipped), {sum(unigrams.values())} tokens, {len(unigrams)} word types",
           file=sys.stderr)
     return unigrams, bigrams
+
+
+def count_wiki_trigrams(dump_path, bigrams):
+    """Second pass over the dump, same sentence dedup. Counting every
+    trigram would need ~1 GB; counting only those whose two bigrams are
+    both common keeps it small and drops nothing the ranker would use."""
+    trigrams = collections.Counter()
+    seen = set()
+    for wikitext in _iter_articles(dump_path):
+        text = strip_wikitext(wikitext)
+        for sentence in _RE_SENTENCE.split(text):
+            toks = [normalise_native(t) for t in _RE_TOKEN.findall(sentence)]
+            toks = [t for t in toks if t]
+            if len(toks) < 3:
+                continue
+            h = hash(" ".join(toks))
+            if h in seen:
+                continue
+            seen.add(h)
+            for a, b, c in zip(toks, toks[1:], toks[2:]):
+                if bigrams.get((a, b), 0) >= TRIGRAM_BIGRAM_FLOOR \
+                        and bigrams.get((b, c), 0) >= TRIGRAM_BIGRAM_FLOOR:
+                    trigrams[(a, b, c)] += 1
+    return trigrams
+
+
+def wiki_trigrams(dump_path, bigrams):
+    if os.path.exists(WIKI_TRIGRAMS):
+        out = {}
+        with open(WIKI_TRIGRAMS, encoding="utf-8") as fh:
+            for line in fh:
+                a, b, c, n = line.rstrip("\n").split("\t")
+                out[(a, b, c)] = int(n)
+        print(f"wiki trigrams from cache: {len(out)}", file=sys.stderr)
+        return out
+    print("counting trigrams (second pass over the dump) ...", file=sys.stderr)
+    trigrams = count_wiki_trigrams(dump_path, bigrams)
+    with open(WIKI_TRIGRAMS, "w", encoding="utf-8") as fh:
+        for (a, b, c), n in trigrams.most_common():
+            if n < 2:
+                break
+            fh.write(f"{a}\t{b}\t{c}\t{n}\n")
+    return {k: v for k, v in trigrams.items() if v >= 2}
 
 
 def wiki_counts(dump_path, refresh=False):
@@ -489,6 +538,26 @@ def build(top, out_path):
         if p in lexicon and n in lexicon:
             bigrams[(p, n)] = max(w, bigrams.get((p, n), 0))
 
+    # Trigrams over surfaces: top followers per two-word context.
+    tri_count = collections.Counter()
+    for (a, b, c), n in wiki_trigrams(WIKI_DUMP, wiki_bigrams).items():
+        if n < MIN_TRIGRAM_COUNT:
+            continue
+        sa, sb, sc = canonical.get(a), canonical.get(b), canonical.get(c)
+        if sa in lexicon and sb in lexicon and sc in lexicon and len({sa, sb, sc}) == 3:
+            tri_count[(sa, sb, sc)] += n
+    per_ctx = collections.defaultdict(list)
+    for (sa, sb, sc), n in tri_count.items():
+        per_ctx[(sa, sb)].append((sc, n))
+    t_max = max(tri_count.values()) if tri_count else 1
+    trigrams = {}
+    for ctx, followers in per_ctx.items():
+        followers.sort(key=lambda f: -f[1])
+        for sc, n in followers[:CONTEXTS_PER_PAIR]:
+            trigrams[ctx + (sc,)] = (log_scale(n, t_max), n)
+    kept_t = sorted(trigrams.items(), key=lambda kv: -kv[1][1])[:MAX_TRIGRAMS]
+    trigrams = {k: v[0] for k, v in kept_t}
+
     # Deliverables.
     stem = os.path.splitext(out_path)[0]
     with open(out_path, "w", encoding="utf-8") as fh:
@@ -497,6 +566,16 @@ def build(top, out_path):
     with open(stem + ".bigrams.tsv", "w", encoding="utf-8") as fh:
         for (p, n), w in sorted(bigrams.items(), key=lambda kv: (-kv[1], kv[0])):
             fh.write(f"{p}\t{n}\t{w}\n")
+    with open(stem + ".trigrams.tsv", "w", encoding="utf-8") as fh:
+        for (a, b, c), w in sorted(trigrams.items(), key=lambda kv: (-kv[1], kv[0])):
+            fh.write(f"{a}\t{b}\t{c}\t{w}\n")
+    # Surface -> the Gujarati-script word behind it, for the script
+    # preview. This is the one place the script leaves the pipeline.
+    with open(stem + ".native.tsv", "w", encoding="utf-8") as fh:
+        for surface in sorted(lexicon):
+            natives = surface_natives.get(surface)
+            if natives:
+                fh.write(f"{surface}\t{max(natives, key=lambda t: t[1])[0]}\n")
 
     # Review file: the native words behind each surface. Never ships.
     with open(stem + ".review.tsv", "w", encoding="utf-8") as fh:
@@ -507,7 +586,8 @@ def build(top, out_path):
             fh.write(f"{surface}\t{freq}\t{int(surface_count.get(surface, 0))}\t{shown}\n")
 
     print(f"{out_path}: {len(lexicon)} surfaces; "
-          f"{stem}.bigrams.tsv: {len(bigrams)} bigrams", file=sys.stderr)
+          f"{stem}.bigrams.tsv: {len(bigrams)} bigrams; "
+          f"{stem}.trigrams.tsv: {len(trigrams)} trigrams", file=sys.stderr)
 
 
 if __name__ == "__main__":
@@ -519,7 +599,7 @@ if __name__ == "__main__":
                     help="recount the dump instead of using the cache")
     args = ap.parse_args()
     if args.refresh_wiki:
-        for p in (WIKI_UNIGRAMS, WIKI_BIGRAMS):
+        for p in (WIKI_UNIGRAMS, WIKI_BIGRAMS, WIKI_TRIGRAMS):
             if os.path.exists(p):
                 os.remove(p)
     build(args.top, args.out)

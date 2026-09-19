@@ -1,0 +1,32 @@
+# input<TAB>expected after autocorrect on every word + grammar fixes (first option)
+# Lines starting with # are ignored. Add your own real messages here.
+kem cho	kem cho
+hu ghare gayo cho	hu ghare gayo chu
+tame kem che	tame kem cho
+ame majama chu	ame majama chie
+tu su kare cho	tu su kare che
+e ghare che	e ghare che
+hu kale jashe	hu kale jaish
+tame kale jaish	tame kale jasho
+ame kale gayo	ame kale gaya
+Avi gaye ghara	Aavi gaya ghare
+mane khabar nathi	mane khabar nathi
+su chale che	su chale che
+hu jamva jau chu	hu jamva jau chu
+tame jamva jao che	tame jamva jao cho
+kal meeting che	kal meeting che
+thayoo che	thayu che
+gharey aavjo	ghare aavjo
+majaama chhu	majama chu
+tu kya cho	tu kya che
+hu ane tame majama cho	hu ane tame majama chie
+hu pan avu chu	hu pan aavu chu
+tame su karo cho	tame su karo cho
+su karo cho	su karo cho
+hu manu chu ke tame saras cho	hu manu chu ke tame saras cho
+e loko majama che	e loko majama che
+tame kale hashe	tame kale hasho
+hu ghare hashe	hu ghare hoish
+Hu ghare gayo cho. Tame?	Hu ghare gayo chu. Tame?
+aaje office ma kaam bahu che	aaje office ma kaam bahu che
+hu thaki gayo chu	hu thaki gayo chu

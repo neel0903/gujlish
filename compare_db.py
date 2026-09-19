@@ -22,14 +22,21 @@ TRIALS = [
     ("amda", None), ("prat", None), ("mahi", None), ("lok", None),
     ("sam", None), ("pra", None), ("", "bharat"), ("", "gujarat"),
     ("", "ane"), ("", "ek"),
+    # two words of context (typed, prev, prev2)
+    ("", "gaya", "aavi"), ("gh", "gaya", "aavi"), ("", "ghare", "hu"),
+    ("", "khabar", "mane"), ("", "cho", "kem"), ("k", "su", "tame"),
 ]
 
 
 def run(db_path):
     eng = GujlishEngine(db_path)
     out = []
-    for typed, prev in TRIALS:
-        res = eng.suggest(typed, prev) if typed else eng.next_word(prev)
+    for t in TRIALS:
+        typed, prev, prev2 = (tuple(t) + (None,))[:3]
+        try:
+            res = eng.suggest(typed, prev, prev2) if typed else eng.next_word(prev, prev2)
+        except Exception:   # the seed DB predates trigrams
+            res = eng.suggest(typed, prev) if typed else eng.next_word(prev)
         out.append(", ".join(res) or "(nothing)")
     return out
 
@@ -40,7 +47,8 @@ if __name__ == "__main__":
     a, b = run(old), run(new)
     width = max(len(x) for x in a) + 2
     print(f"{'input':<18}{old:<{width}}{new}")
-    for (typed, prev), x, y in zip(TRIALS, a, b):
-        ctx = f"[{prev}] " if prev else ""
+    for t, x, y in zip(TRIALS, a, b):
+        typed, prev, prev2 = (tuple(t) + (None,))[:3]
+        ctx = f"[{(prev2 + ' ') if prev2 else ''}{prev}] " if prev else ""
         label = f"{ctx}{typed!r}"
         print(f"{label:<18}{x:<{width}}{y}")

@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="app.6127ee7a.css">
+<link rel="stylesheet" href="app.0ae4e6ee.css">
 </head>
 <body>
 <header class="top">
@@ -27,6 +27,9 @@
 <main>
   <textarea id="msg" rows="4" placeholder="Type Gujlish here…" autocapitalize="off" autocomplete="off"
             autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
+
+  <div class="preview" id="preview" lang="gu" hidden></div>
+  <div class="grammar" id="grammar" hidden></div>
 
   <div class="actions">
     <button class="primary" id="whatsapp">WhatsApp</button>
@@ -68,6 +71,15 @@
       <label><input type="radio" name="mode" value="gujlish"> Gujlish only</label>
       <label><input type="radio" name="mode" value="english"> English only</label>
       <label><input type="checkbox" id="autocorrect"> Auto-correct typed words on space</label>
+      <label><input type="checkbox" id="grammarOn"> Grammar suggestions (hu chu, tame cho, ame gaya …)</label>
+    </section>
+
+    <section>
+      <h3>Gujarati script</h3>
+      <label><input type="checkbox" id="previewOn"> Show the message in Gujarati script</label>
+      <p class="hint">Send as:</p>
+      <label><input type="radio" name="sendAs" value="gujlish"> Gujlish (as typed)</label>
+      <label><input type="radio" name="sendAs" value="script"> Gujarati script (ગુજરાતી)</label>
       <label><input type="checkbox" id="showDebug"> Show the debug line</label>
     </section>
 
@@ -106,9 +118,11 @@
   </form>
 </dialog>
 
-<script src="gujlish.cf7e7821.js"></script>
-<script src="lexicon.2952d61d.js"></script>
+<script src="gujlish.6e115e8c.js"></script>
+<script src="grammar.4d8651fb.js"></script>
+<script src="reverse.7f75abda.js"></script>
+<script src="lexicon.db846419.js"></script>
 <script src="english.1c6c6c84.js"></script>
-<script src="app.2588b7e1.js"></script>
+<script src="app.99dbefbc.js"></script>
 </body>
 </html>

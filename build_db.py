@@ -32,6 +32,15 @@ CREATE TABLE bigrams (
     PRIMARY KEY (prev_id, next_id)
 ) WITHOUT ROWID;
 
+DROP TABLE IF EXISTS trigrams;
+CREATE TABLE trigrams (
+    prev2_id INTEGER NOT NULL,
+    prev1_id INTEGER NOT NULL,
+    next_id  INTEGER NOT NULL,
+    weight   INTEGER NOT NULL,
+    PRIMARY KEY (prev2_id, prev1_id, next_id)
+) WITHOUT ROWID;
+
 -- The only index that matters for typing latency.
 CREATE INDEX idx_words_strict ON words(strict_k, freq DESC);
 CREATE INDEX idx_words_loose ON words(loose_k, freq DESC);
@@ -46,11 +55,12 @@ def load_seed():
         # Later duplicates win only if more frequent.
         if surface not in words or freq > words[surface]:
             words[surface] = freq
-    return words, BIGRAMS
+    return words, BIGRAMS, []
 
 
 def load_tsv(path):
-    """surface<TAB>freq per line, from build_lexicon.py."""
+    """surface<TAB>freq per line, from build_lexicon.py, plus the
+    .bigrams.tsv and .trigrams.tsv beside it."""
     words = {}
     with open(path, encoding="utf-8") as fh:
         for line in fh:
@@ -58,19 +68,25 @@ def load_tsv(path):
             if len(parts) < 2:
                 continue
             words[parts[0]] = int(parts[1])
-    bigram_path = os.path.splitext(path)[0] + ".bigrams.tsv"
-    bigrams = []
-    if os.path.exists(bigram_path):
-        with open(bigram_path, encoding="utf-8") as fh:
+    stem = os.path.splitext(path)[0]
+    bigrams, trigrams = [], []
+    if os.path.exists(stem + ".bigrams.tsv"):
+        with open(stem + ".bigrams.tsv", encoding="utf-8") as fh:
             for line in fh:
                 p = line.rstrip("\n").split("\t")
                 if len(p) >= 3:
                     bigrams.append((p[0], p[1], int(p[2])))
-    return words, bigrams
+    if os.path.exists(stem + ".trigrams.tsv"):
+        with open(stem + ".trigrams.tsv", encoding="utf-8") as fh:
+            for line in fh:
+                p = line.rstrip("\n").split("\t")
+                if len(p) >= 4:
+                    trigrams.append((p[0], p[1], p[2], int(p[3])))
+    return words, bigrams, trigrams
 
 
 def build(out_path="gujlish.db", source=None):
-    words, bigrams = load_tsv(source) if source else load_seed()
+    words, bigrams, trigrams = load_tsv(source) if source else load_seed()
 
     conn = sqlite3.connect(out_path)
     conn.executescript(SCHEMA)
@@ -93,13 +109,16 @@ def build(out_path="gujlish.db", source=None):
     conn.executemany(
         "INSERT OR REPLACE INTO bigrams VALUES (?,?,?)", bg
     )
+    tg = [(ids[a], ids[b], ids[c], w) for a, b, c, w in trigrams
+          if a in ids and b in ids and c in ids]
+    conn.executemany("INSERT OR REPLACE INTO trigrams VALUES (?,?,?,?)", tg)
 
     conn.commit()
     conn.execute("VACUUM")
     conn.close()
 
     size_kb = os.path.getsize(out_path) / 1024
-    print(f"{out_path}: {len(rows)} words, {len(bg)} bigrams, {size_kb:.0f} KB")
+    print(f"{out_path}: {len(rows)} words, {len(bg)} bigrams, {len(tg)} trigrams, {size_kb:.0f} KB")
     if dropped:
         print(f"  {dropped} bigrams dropped (word not in lexicon)")
 

@@ -299,6 +299,62 @@ personal-dictionary and autocorrect checks; Chrome: install, typing,
 bigram prediction, English mixing, settings, chat learning UI, update
 flow, autocorrect with undo.
 
+## Phase 2c — "next level" round (2026-09-19)
+
+Neel asked for grammar checking and the best possible Gujarati app with
+English side by side, and handed over product ownership. Built:
+
+- **Three-word context.** `build_lexicon.py` counts trigrams in a
+  second pass over the dump (only over already-common bigrams, so it
+  stays under 100 MB of RAM); 63K trigrams ship. `engine.py` and
+  `gujlish.js` take `prev2`: context score is bigram×4 + trigram×6 for
+  suggestions and corrections, bigram + 1.5×trigram for prediction.
+  Personal trigrams are learned from typing and chat imports too.
+- **Gujarati script preview and send-in-script.** `lexicon.native.tsv`
+  maps each surface to the script word behind it (80,010 forms); it
+  ships as a separate lazily loaded file. Unknown words fall back to
+  `web/reverse.js`, a rule-based Latin→script converter that is right
+  for unambiguous spellings and documented where Latin cannot decide
+  (a single mid-word "a", mid-word "kr"). Settings: show preview
+  (default on), send as Gujlish or script. This reverses the original
+  "no script on the device" decision, on Neel's request.
+- **Grammar suggestions** (`web/grammar.js`, tested by
+  `web/test_grammar.js`). Rules, not a model: copula agrees with the
+  subject pronoun (hu chu, tu che, tame cho, ame chie), future verbs
+  and the future copula carry person (hu jaish, tame jasho, ame
+  jaishu, te jashe; hoish/hasho/hashe), a -yo past verb after a plural
+  subject becomes -ya, and after hu a -ya verb offers -yo/-yi. Subject
+  = nearest pronoun to the left inside the clause; conjunctions and
+  sentence punctuation end the clause; "hu ane tame" is first-person
+  plural. Verb stems are verified against the lexicon so "english" and
+  "finish" never look like futures. Shown as tappable "che → cho" chips
+  with the reason as a tooltip; never applied silently.
+- **Golden sentences** (`web/golden.tsv`): 30 messages run through the
+  full commit pipeline (autocorrect each word with two words of
+  context, then apply grammar fixes). All pass. **Neel should add his
+  own real messages here**; that file is the product's regression test.
+- **Faster load.** Phonetic keys are precomputed into the lexicon file;
+  engine build dropped from ~600 ms to ~100 ms on a PC.
+- Seed spellings fixed where the script has શ: hashe, shikhu, shaher.
+
+Site is 7.5 MB uncompressed (about 2.5 MB over the wire), cached once.
+
+**Verified:** 80,053/80,053 keys, 40/40 trials (incl. two-word
+context) and 21/21 corrections identical to Python; 23 grammar rule
+checks, 13 script-fallback cases and 30/30 golden sentences; Chrome:
+preview renders તમે કેમ છે, the grammar chip "che → cho" appears with
+its reason and applies on tap, next-word prediction with two words of
+context, settings sheet, no console errors.
+
+**Next candidates, in order:** (1) Neel's own golden sentences and a
+chat export — the rules and corrections are only as good as the
+register they are tuned on; (2) per-word language detection so English
+spelling gets its own dictionary rather than the "defends itself"
+heuristic; (3) English bigrams from Simple English Wikipedia for
+prediction; (4) possessive/adjective agreement (maru/mari/mara) once
+noun gender can be read off the script forms; (5) optional online
+"check this sentence" via a language model, explicit tap only.
+
 **Known follow-ups:** engine build on load is ~0.7 s on a PC (80K keys
 computed in JS), likely 1.5–2 s on a phone — precompute keys at build
 time if it feels slow. The WhatsApp export parser is untested against a

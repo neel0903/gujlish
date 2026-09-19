@@ -21,7 +21,7 @@ WORDS = [
     ("hatu", 80, "was"),
     ("hata", 72, "were"),
     ("hati", 70, "was (f)"),
-    ("hase", 68, "will be"),
+    ("hashe", 68, "will be"),
     ("hoy", 66, "may be"),
     ("thai", 74, "become / happen"),
     ("thayu", 88, "happened / done"),
@@ -178,8 +178,8 @@ WORDS = [
     ("game", 64, "likes"),
     ("pidhu", 40, "drank"),
     ("vaparu", 36, "I use"),
-    ("sikhu", 42, "I learn"),
-    ("sikhyu", 44, "learned"),
+    ("shikhu", 42, "I learn"),
+    ("shikhyu", 44, "learned"),
 
     # ---- knowing / not knowing
     ("khabar", 82, "news / knowledge"),
@@ -223,7 +223,7 @@ WORDS = [
     ("bajar", 58, "market"),
     ("dukan", 52, "shop"),
     ("gam", 56, "village"),
-    ("saher", 50, "city"),
+    ("shaher", 50, "city"),
     ("desh", 46, "country"),
     ("rasto", 48, "road"),
     ("station", 46, "station"),

@@ -1,18 +1,30 @@
 """
 The suggestion engine. This is the piece that gets ported to Swift
-almost line for line, so it deliberately uses nothing clever.
+almost line for line, so it deliberately uses nothing clever. The
+JavaScript port in web/gujlish.js is checked against this file by
+web/test_port.js.
 
 Ranking, in order of influence:
-  1. bigram weight for the previous word   (strongest signal)
+  1. context: trigram weight for the two previous words, then bigram
+     weight for the previous word           (strongest signal)
   2. user dictionary count                  (learns your spellings)
   3. corpus frequency
   4. shorter completions before longer ones
 """
+import math
 import sqlite3
 
 from phonetics import strict_key, loose_key
 
 MAX_SUGGESTIONS = 5
+CORRECT_MARGIN = 20
+
+
+def user_boost(count):
+    """Three acceptances put a word firmly ahead of the corpus; beyond
+    that it grows slowly, so a chat export where one word appears 800
+    times does not drown everything else. Mirrored in web/gujlish.js."""
+    return 25 * min(count, 3) + 10 * math.log1p(count) if count else 0
 
 
 class GujlishEngine:
@@ -29,8 +41,8 @@ class GujlishEngine:
         cur = self.conn.execute(
             f"SELECT id, surface, strict_k, loose_k, freq FROM words "
             f"WHERE {column} >= ? AND {column} < ? "
-            f"ORDER BY freq DESC LIMIT ?",
-            (key_prefix, key_prefix + "\uffff", limit),
+            f"ORDER BY freq DESC, surface LIMIT ?",
+            (key_prefix, key_prefix + "￿", limit),
         )
         return cur.fetchall()
 
@@ -41,7 +53,7 @@ class GujlishEngine:
         cur = self.conn.execute(
             "SELECT id, surface, strict_k, loose_k, freq FROM words "
             "WHERE LENGTH(loose_k) BETWEEN ? AND ? "
-            "ORDER BY freq DESC LIMIT 400",
+            "ORDER BY freq DESC, surface LIMIT 400",
             (lo, hi),
         )
         out = []
@@ -52,24 +64,51 @@ class GujlishEngine:
                     break
         return out
 
-    def _bigram_weights(self, prev_word):
-        if not prev_word:
+    def _bigram_weights(self, prev1):
+        if not prev1:
             return {}
         cur = self.conn.execute(
             "SELECT b.next_id, b.weight FROM bigrams b "
             "JOIN words w ON w.id = b.prev_id WHERE w.loose_k = ?",
-            (loose_key(prev_word, prefix=True),),
+            (loose_key(prev1, prefix=True),),
         )
-        return {r["next_id"]: r["weight"] for r in cur}
+        out = {}
+        for r in cur:
+            out[r["next_id"]] = max(out.get(r["next_id"], 0), r["weight"])
+        return out
+
+    def _trigram_weights(self, prev2, prev1):
+        if not prev1 or not prev2:
+            return {}
+        cur = self.conn.execute(
+            "SELECT t.next_id, t.weight FROM trigrams t "
+            "JOIN words w2 ON w2.id = t.prev2_id "
+            "JOIN words w1 ON w1.id = t.prev1_id "
+            "WHERE w2.loose_k = ? AND w1.loose_k = ?",
+            (loose_key(prev2, prefix=True), loose_key(prev1, prefix=True)),
+        )
+        out = {}
+        for r in cur:
+            out[r["next_id"]] = max(out.get(r["next_id"], 0), r["weight"])
+        return out
+
+    def _context(self, prev1, prev2=None):
+        """id -> score contribution from the words before."""
+        ctx = {}
+        for i, w in self._bigram_weights(prev1).items():
+            ctx[i] = ctx.get(i, 0) + w * 4
+        for i, w in self._trigram_weights(prev2, prev1).items():
+            ctx[i] = ctx.get(i, 0) + w * 6
+        return ctx
 
     # ---------- public API ----------
 
-    def suggest(self, typed, prev_word=None):
+    def suggest(self, typed, prev_word=None, prev2=None):
         """Candidates for a partially typed word."""
         sk = strict_key(typed, prefix=True)
         lk = loose_key(typed, prefix=True)
         if not sk:
-            return self.next_word(prev_word)
+            return self.next_word(prev_word, prev2)
 
         # Tier 1: aspiration-preserving match. Tier 2: aspiration folded,
         # scored down. Tier 3: one edit away, only for longer input.
@@ -96,12 +135,12 @@ class GujlishEngine:
             tiers.append(([r for r in self._fuzzy(lk)
                            if r["id"] not in seen], 60))
 
-        weights = self._bigram_weights(prev_word)
+        ctx = self._context(prev_word, prev2)
         scored = []
         for rows_, penalty in tiers:
             for r in rows_:
                 score = r["freq"] - penalty
-                score += weights.get(r["id"], 0) * 4
+                score += ctx.get(r["id"], 0)
                 score += user_boost(self.user_counts.get(r["surface"], 0))
                 score -= (len(r["loose_k"]) - len(lk)) * 3
                 if r["strict_k"] == sk:
@@ -119,33 +158,40 @@ class GujlishEngine:
                 break
         return out
 
-    def next_word(self, prev_word):
+    def next_word(self, prev_word, prev2=None):
         """Candidates when nothing is typed yet — pure prediction."""
         if not prev_word:
             return []
-        cur = self.conn.execute(
-            "SELECT w2.surface, b.weight FROM bigrams b "
-            "JOIN words w1 ON w1.id = b.prev_id "
-            "JOIN words w2 ON w2.id = b.next_id "
-            "WHERE w1.loose_k = ? ORDER BY b.weight DESC LIMIT ?",
-            (loose_key(prev_word, prefix=True), MAX_SUGGESTIONS),
-        )
-        return [r["surface"] for r in cur]
+        bi = self._bigram_weights(prev_word)
+        tri = self._trigram_weights(prev2, prev_word)
+        scores = {}
+        for i, w in bi.items():
+            scores[i] = scores.get(i, 0) + w
+        for i, w in tri.items():
+            scores[i] = scores.get(i, 0) + w * 1.5
+        if not scores:
+            return []
+        surfaces = {}
+        marks = ",".join("?" * len(scores))
+        for r in self.conn.execute(
+                f"SELECT id, surface FROM words WHERE id IN ({marks})", list(scores)):
+            surfaces[r["id"]] = r["surface"]
+        ranked = sorted(scores.items(), key=lambda kv: (-kv[1], surfaces[kv[0]]))
+        return [surfaces[i] for i, _ in ranked[:MAX_SUGGESTIONS]]
 
     def accept(self, surface):
         """Call when the user taps a suggestion. On device this also
         writes to the user dictionary in the app group container."""
         self.user_counts[surface] = self.user_counts.get(surface, 0) + 1
 
-    CORRECT_MARGIN = 20
-
-    def correct(self, typed, prev_word=None):
+    def correct(self, typed, prev_word=None, prev2=None):
         """What a committed word should have been, or None to leave it.
         Candidates: same phonetic key (gharey -> ghare) or one letter
         away (gaye -> gaya), scored like suggestions plus a closeness
         bonus, against a bias to keep what was typed. Never corrects a
         word the user has taught it or a common known word. Mirrored in
-        web/gujlish.js, which additionally spares English words."""
+        web/gujlish.js, which additionally lets English words defend
+        themselves."""
         clean = "".join(c for c in typed.lower() if "a" <= c <= "z")
         if len(clean) < 3:
             return None
@@ -156,10 +202,10 @@ class GujlishEngine:
             "SELECT id, freq FROM words WHERE surface = ?", (clean,)).fetchone()
         if known and known["freq"] >= 60:
             return None
-        weights = self._bigram_weights(prev_word)
+        ctx = self._context(prev_word, prev2)
         keep = 30
         if known:
-            keep = known["freq"] + weights.get(known["id"], 0) * 4 + user_boost(uc) + 25
+            keep = known["freq"] + ctx.get(known["id"], 0) + user_boost(uc) + 25
 
         cands = {}
         for key in (loose_key(clean, prefix=True), loose_key(clean)):
@@ -177,21 +223,13 @@ class GujlishEngine:
         for r, bonus in cands.values():
             if r["surface"] == clean:
                 continue
-            s = (r["freq"] + weights.get(r["id"], 0) * 4
+            s = (r["freq"] + ctx.get(r["id"], 0)
                  + user_boost(self.user_counts.get(r["surface"], 0)) + bonus)
             if best is None or s > best[0] or (s == best[0] and r["surface"] < best[1]):
                 best = (s, r["surface"])
-        if best is None or best[0] - keep < self.CORRECT_MARGIN:
+        if best is None or best[0] - keep < CORRECT_MARGIN:
             return None
         return best[1]
-
-
-def user_boost(count):
-    """Three acceptances put a word firmly ahead of the corpus; beyond
-    that it grows slowly, so a chat export where one word appears 800
-    times does not drown everything else. Mirrored in web/gujlish.js."""
-    import math
-    return 25 * min(count, 3) + 10 * math.log1p(count) if count else 0
 
 
 def _is_vowel_swap(a, b):
@@ -240,11 +278,17 @@ if __name__ == "__main__":
         ctx = f"[{prev}] " if prev else ""
         print(f"{ctx}{typed!r:<10} -> {', '.join(res) or '(nothing)'}")
 
+    print("\nTwo words of context:")
+    for prev2, prev, typed in [("aavi", "gaya", ""), ("aavi", "gaya", "gh"),
+                               ("hu", "ghare", ""), ("mane", "khabar", "")]:
+        res = eng.suggest(typed, prev, prev2) if typed else eng.next_word(prev, prev2)
+        print(f"    [{prev2} {prev}] {typed!r:<6} -> {', '.join(res) or '(nothing)'}")
+
     print("\nAutocorrect on commit:")
-    prev = None
+    prev2 = prev = None
     for word in "avi gaye ghara".split():
-        fix = eng.correct(word, prev)
+        fix = eng.correct(word, prev, prev2)
         print(f"    {word!r:<8} -> {fix or '(kept)'}")
-        prev = fix or word
+        prev2, prev = prev, fix or word
     for word in ["kem", "che", "thayoo", "gharey", "majaama", "tamne", "jsk"]:
         print(f"    {word!r:<8} -> {eng.correct(word) or '(kept)'}")

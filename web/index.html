@@ -28,6 +28,9 @@
   <textarea id="msg" rows="4" placeholder="Type Gujlish here…" autocapitalize="off" autocomplete="off"
             autocorrect="off" spellcheck="false" enterkeyhint="done"></textarea>
 
+  <div class="preview" id="preview" lang="gu" hidden></div>
+  <div class="grammar" id="grammar" hidden></div>
+
   <div class="actions">
     <button class="primary" id="whatsapp">WhatsApp</button>
     <button id="share">Share</button>
@@ -68,6 +71,15 @@
       <label><input type="radio" name="mode" value="gujlish"> Gujlish only</label>
       <label><input type="radio" name="mode" value="english"> English only</label>
       <label><input type="checkbox" id="autocorrect"> Auto-correct typed words on space</label>
+      <label><input type="checkbox" id="grammarOn"> Grammar suggestions (hu chu, tame cho, ame gaya …)</label>
+    </section>
+
+    <section>
+      <h3>Gujarati script</h3>
+      <label><input type="checkbox" id="previewOn"> Show the message in Gujarati script</label>
+      <p class="hint">Send as:</p>
+      <label><input type="radio" name="sendAs" value="gujlish"> Gujlish (as typed)</label>
+      <label><input type="radio" name="sendAs" value="script"> Gujarati script (ગુજરાતી)</label>
       <label><input type="checkbox" id="showDebug"> Show the debug line</label>
     </section>
 
@@ -107,6 +119,8 @@
 </dialog>
 
 <script src="{{GUJLISH_JS}}"></script>
+<script src="{{GRAMMAR_JS}}"></script>
+<script src="{{REVERSE_JS}}"></script>
 <script src="{{LEXICON_JS}}"></script>
 <script src="{{ENGLISH_JS}}"></script>
 <script src="{{APP_JS}}"></script>
