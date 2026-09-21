@@ -37,6 +37,10 @@ NATIVE_SRC = "lexicon.native.tsv"
 
 
 def load_english():
+    if not os.path.exists(ENGLISH_SRC):
+        # No corpus (fresh clone): use the committed, already-scaled copy.
+        with open("english.tsv", encoding="utf-8") as fh:
+            return [[w, int(f)] for w, f in (l.rstrip("\n").split("\t") for l in fh if "\t" in l)]
     rows = []
     with open(ENGLISH_SRC, encoding="utf-8") as fh:
         for line in fh:
