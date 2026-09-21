@@ -304,9 +304,10 @@ spent.
 
 (fill in on the Mac)
 
-- macOS: 
-- Xcode: 
-- Free disk: 
-- iOS runtime: 
-- KeyboardKit licence on that day: 
+- macOS: 27.0, Apple silicon, standard account `user1` (2026-09-21)
+- Xcode: 27.0 (27A266a) on a 64 GB APFS pendrive at `/Volumes/GujlishDev/Xcode.app`, not in /Applications; used through `DEVELOPER_DIR=/Volumes/GujlishDev/Xcode.app/Contents/Developer`. Licence and first launch done by the Mac's owner. Swift 6.4, iOS SDK 27.0
+- Free disk: internal about 20 GB (too little for Xcode, hence the pendrive); pendrive 51 GB
+- iOS runtime: none installed on purpose (no simulator; testing on the iPhone)
+- Tests: Python and JS suites pass; `swift test` in `ios/GujlishCore` passes (8 tests)
+- KeyboardKit licence on that day: 2026-09-21: README says "KeyboardKit is closed-source" and ships as a binary package; LICENSE is a "Closed Source License" whose terms speak of a valid licence key and a written agreement, and forbid redistribution and reverse engineering. The README still describes a free tier (KeyboardView, layout engine, callouts, basic autocomplete; localized keyboards are Pro), but the free tier's commercial terms are not clear from the repo. Recommendation: build our own SwiftUI keyboard view in Step 3 (no dependency, smaller memory footprint, nothing to clear with a vendor before the App Store)
 - Hello-world on iPhone: 
