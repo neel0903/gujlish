@@ -13,3 +13,5 @@ tester.html
 .vscode/
 Thumbs.db
 .DS_Store
+# iOS stand-in test build output
+ios/.build/
