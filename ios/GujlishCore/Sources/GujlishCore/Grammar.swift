@@ -36,14 +36,26 @@ public enum Grammar {
     // (hun, chhun) are listed explicitly instead.
     private static func lk(_ w: String) -> String { Phonetics.looseKey(w, prefix: true) }
 
-    // Tables are kept word for word with grammar.js so the two agree.
-    private static let subject: [String: String] = [
+    // Tables are kept word for word with grammar.js so the two agree. They
+    // are written as people spell the words and keyed by loose key at
+    // load, because every lookup is by loose key ("tyare" keys as "tiare",
+    // "badha" as "bada"; spelled-out keys would never match).
+    private static func keyed<V>(_ src: [String: V]) -> [String: V] {
+        Dictionary(src.map { (lk($0.key), $0.value) }, uniquingKeysWith: { a, _ in a })
+    }
+
+    private static let subject: [String: String] = keyed([
         "hu": "1sg", "hun": "1sg", "tu": "2sg", "tun": "2sg", "tame": "2pl", "ap": "2pl",
         "ame": "1pl", "apne": "1pl", "e": "3sg", "te": "3sg", "a": "3sg",
         "pelo": "3sg", "peli": "3sg", "pelu": "3sg", "teo": "3pl", "pela": "3pl", "badha": "3pl", "loko": "3pl",
-    ]
-    private static let stops: Set<String> = ["ane", "pan", "ke", "etle", "to", "karan", "karanke",
-                                             "jo", "tyare", "jyare", "athva", "matlab", "bas"]
+    ])
+    private static let stops = Set(["ane", "pan", "ke", "etle", "to", "karan", "karanke",
+                                    "jo", "tyare", "jyare", "athva", "matlab", "bas"].map(lk))
+    // "tame badha", "ame badha": badha only strengthens the pronoun before it.
+    private static let quantifiers = Set(["badha"].map(lk))
+    // Past copula: hu hato/hati, ame/tame/teo hata. Only the masculine
+    // singular is checked; hati and hatu are left to the writer.
+    private static let pastCopulaSg = lk("hato"), pastCopulaPl = lk("hata")
 
     // loose key -> persons this form agrees with
     private static let copula = ["cu": "1sg", "cun": "1sg", "ce": "2sg 3sg 3pl", "co": "2pl", "cie": "1pl"]
@@ -116,6 +128,10 @@ public enum Grammar {
             let k = lk(t.text)
             if stops.contains(k) { break }
             if let person = subject[k] {
+                if quantifiers.contains(k), j >= 1, tokens[j - 1].word {
+                    let before = lk(tokens[j - 1].text)
+                    if subject[before] != nil && !quantifiers.contains(before) { continue }
+                }
                 found.append((person, t.text))
                 if j >= 2, tokens[j - 1].word, lk(tokens[j - 1].text) == "ane",
                    tokens[j - 2].word, let other = subject[lk(tokens[j - 2].text)] {
@@ -152,6 +168,17 @@ public enum Grammar {
             if let persons = futCopula[key] {
                 if let subj = subjectFor(tokens, i), !agrees(persons, subj.person), let fix = futCopulaFor[subj.person] {
                     issues.append(issue(t, fix, "after \(subj.word) it is \(fix)"))
+                }
+                continue
+            }
+
+            if key == pastCopulaSg || key == pastCopulaPl {
+                if let subj = subjectFor(tokens, i) {
+                    if key == pastCopulaSg && subj.person.hasSuffix("pl") {
+                        issues.append(issue(t, "hata", "after \(subj.word) it is hata"))
+                    } else if key == pastCopulaPl && subj.person == "1sg" {
+                        issues.append(issue(t, "hato", "after hu it is hato or hati", alt: "hati"))
+                    }
                 }
                 continue
             }

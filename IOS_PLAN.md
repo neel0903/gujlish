@@ -300,6 +300,57 @@ spent.
 - The tests, `expected.json` generation and golden sentences are what
   the Swift tests will read.
 
+## Progress notes (kept on the Mac)
+
+**Step 1, done 2026-09-21.** `ios/project.yml` is the project definition;
+`xcodegen --spec ios/project.yml` writes `ios/Gujlish.xcodeproj` (run it
+after adding a Swift file). `python3 build_ios_assets.py` makes
+`ios/Assets/gujlish.db`. Signing: free Personal Team, set in project.yml.
+Build and install from the command line:
+
+```bash
+export DEVELOPER_DIR=/Volumes/GujlishDev/Xcode.app/Contents/Developer
+cd ios && xcodebuild -project Gujlish.xcodeproj -scheme Gujlish -configuration Release \
+    -destination 'id=<iPhone UDID>' -derivedDataPath /Volumes/GujlishDev/DerivedData \
+    -allowProvisioningUpdates build
+xcrun devicectl device install app --device <iPhone UDID> \
+    /Volumes/GujlishDev/DerivedData/Build/Products/Release-iphoneos/Gujlish.app
+```
+
+Always judge speed on a Release build; Debug Swift is several times slower.
+
+**Step 2, done except the device performance test.** `ios/GujlishCore`
+(`swift test`): Phonetics, Lexicon, Engine, Grammar, Reverse pinned to
+`expected.json` and `golden.tsv`. Deviation from the plan: the personal
+dictionary is one JSON file (`PersonalStore`, the web app's export
+format, written atomically) instead of a second SQLite database; the
+learned data is small and lives in memory anyway.
+
+**Step 3, in progress.** Decisions and what was learned on the phone:
+
+- Own keyboard view, no KeyboardKit (licence, see Step 0 results).
+- Everything that can be wrong lives in GujlishCore with unit tests:
+  `Composer` (what each key does to the text: autocorrect on space and
+  its undo, suggestions, double-space period, script mode, grammar fix),
+  `TouchTracker` (which key a set of fingers means: rollover order,
+  skid tolerance, cancelled taps, long press), `TypingContext`.
+- The engine runs on its own serial queue; a key press only inserts
+  text. Measured on an iPhone 17 Pro: key 0.1 ms, engine about 22 ms in
+  the background, bar refreshed 22 ms after the key, no touch lost in
+  several hundred. iOS itself delivers a touch to a third-party keyboard
+  about 20 ms after the finger lands.
+- "Fast keys" (default on): letters are typed on touch-down. Off gives
+  the system behaviour (on lift, slide to a neighbour to change it).
+- `documentContextBeforeInput` can lag after fast typing, so Composer
+  mirrors its own edits and recognises a lagging report (0.25 s window).
+- The key area is UIKit (`KeyGridView`), sizes measured from iOS 27
+  screenshots; the bar and the settings panel are SwiftUI. iOS pads
+  about 16 pt above a third-party keyboard, hence the short bar.
+- Full Access is not requested, so there are no key haptics; clicks work.
+- Open: undo and grammar chip in script mode (waiting for the on-device
+  delete probe in the settings panel), dark-mode colours checked against
+  the system keyboard, rotation, memory while typing 500 characters.
+
 ## Step 0 results
 
 (fill in on the Mac)

@@ -43,6 +43,16 @@ check("e ... gayo is fine", fixes("e kale gayo").length === 0);
 check("hu ... hashe -> hoish", fixes("hu ghare hashe").join() === "hashe>hoish");
 check("tame ... hashe -> hasho", fixes("tame kale hashe").join() === "hashe>hasho");
 check("chhu/chhe variants recognised", fixes("tame majama chhu").join() === "chhu>cho");
+check("tyare ends the clause", fixes("hu avyo tyare varsad che").length === 0);
+check("jyare ends the clause", fixes("hu nano hato jyare e ahi che").length === 0);
+check("athva ends the clause", fixes("hu avu chu athva e ave che").length === 0);
+check("badha ... cho -> che", fixes("badha majama cho").join() === "cho>che");
+check("tame badha ... cho is fine", fixes("tame badha majama cho").length === 0);
+check("ame badha ... che -> chie", fixes("ame badha majama che").join() === "che>chie");
+check("ame ... hato -> hata", fixes("ame tya hato").join() === "hato>hata");
+check("tame ... hato -> hata", fixes("tame kya hato").join() === "hato>hata");
+check("hu ... hata -> hato / hati", (() => { const i = Grammar.check("hu ghare hata", engine); return i.length === 1 && i[0].to === "hato" && i[0].alt === "hati"; })());
+check("e ... hato and hu ... hati are fine", fixes("e ghare hato").length === 0 && fixes("hu ghare hati").length === 0);
 check("apply keeps offsets", Grammar.fixAll("hu ghare gayo cho ane tame kem che", engine) === "hu ghare gayo chu ane tame kem cho");
 
 // 2. Script fallback for words outside the lexicon.

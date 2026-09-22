@@ -22,7 +22,18 @@ public struct PersonalData: Codable, Equatable {
     public var words: [String: Int] = [:]      // surface -> count
     public var bigrams: [String: Int] = [:]    // "a b" -> count
     public var trigrams: [String: Int] = [:]   // "a b c" -> count
+    /// Unknown words seen but not yet trusted: surface -> times typed.
+    /// Not part of the web app's export, so it may be absent.
+    public var pending: [String: Int] = [:]
     public init() {}
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        words = try c.decodeIfPresent([String: Int].self, forKey: .words) ?? [:]
+        bigrams = try c.decodeIfPresent([String: Int].self, forKey: .bigrams) ?? [:]
+        trigrams = try c.decodeIfPresent([String: Int].self, forKey: .trigrams) ?? [:]
+        pending = try c.decodeIfPresent([String: Int].self, forKey: .pending) ?? [:]
+    }
 }
 
 public final class Engine {
@@ -63,6 +74,9 @@ public final class Engine {
     private var followers: [Int: [Int: Int]] = [:]          // prevId -> nextId -> weight
     private var tri: [IdPair: [Int: Int]] = [:]             // (prev2Id, prev1Id) -> nextId -> weight
     public private(set) var personal = PersonalData()
+    // Answers of knows(looseKey:), which the grammar asks on every keystroke.
+    private var knownKeys: [String: Bool] = [:]
+    private var common: [String]?
 
     public init(lexicon: Lexicon) {
         self.lexicon = lexicon
@@ -175,9 +189,24 @@ public final class Engine {
         lexicon.words(looseKey: looseKey).map { $0.id } + personalWords.filter { $0.lk == looseKey }.map { $0.id }
     }
 
+    /// Gujarati-script form for script mode: the lexicon's real form, else
+    /// the rule-based converter. Nil for a plain English word ("meeting"),
+    /// which stays in Latin.
+    public func script(for word: String) -> String? {
+        let clean = Engine.cleanSurface(word)
+        if clean.isEmpty { return nil }
+        if let native = lexicon.native(surface: clean) { return native }
+        if lexicon.englishFreq(clean) != nil { return nil }
+        let out = Reverse.toGujarati(clean)
+        return out.isEmpty ? nil : out
+    }
+
     /// Is there any word, corpus or personal, with this prefix-mode loose key?
     public func knows(looseKey: String) -> Bool {
-        !lexicon.words(looseKey: looseKey).isEmpty || personalWords.contains { $0.lk == looseKey }
+        if let hit = knownKeys[looseKey] { return hit }
+        let hit = !lexicon.words(looseKey: looseKey).isEmpty || personalWords.contains { $0.lk == looseKey }
+        knownKeys[looseKey] = hit
+        return hit
     }
 
     private func surface(id: Int) -> String? {
@@ -410,6 +439,7 @@ public final class Engine {
             personalWords[i].freq = Engine.personalFreq(total)
         } else if lexicon.word(surface: surface) == nil {
             personalIndex[surface] = personalWords.count
+            knownKeys = [:]
             personalWords.append(Entry(id: Engine.personalBase + personalWords.count, surface: surface,
                                        sk: Phonetics.strictKey(surface, prefix: true),
                                        lk: Phonetics.looseKey(surface, prefix: true),
@@ -434,6 +464,60 @@ public final class Engine {
         Engine.keepMax(&tri[IdPair(a: a.id, b: b.id), default: [:]], n.id, Engine.personalWeight(total))
     }
 
+    // ---------- learning only what deserves it ----------
+    //
+    // A keyboard that learns every word it sees also learns every typo,
+    // and then offers the typo back. So:
+    //   - a word picked from the bar, or one the lexicon or the English
+    //     list knows, counts at once (it is a real word; this learns the
+    //     user's habits and word pairs)
+    //   - an unknown word typed by hand is only noted. It becomes a
+    //     personal word after it has been typed on three occasions, six if
+    //     it looks like a slip of a known word. Deleting it right after
+    //     typing takes the note back.
+    //   - word pairs are only ever learned between known words (learnBigram
+    //     and learnTrigram refuse anything else)
+
+    public static let trustAfter = 3
+    public static let trustTypoAfter = 6
+
+    public func isKnown(_ word: String) -> Bool {
+        let clean = Engine.cleanSurface(word)
+        return lexicon.word(surface: clean) != nil || lexicon.englishFreq(clean) != nil || personalIndex[clean] != nil
+    }
+
+    /// A word was committed. `chosen`: the user picked it from the bar.
+    public func observe(_ word: String, prev: String? = nil, prev2: String? = nil, chosen: Bool) {
+        let clean = Engine.cleanSurface(word)
+        if clean.isEmpty { return }
+        if chosen || isKnown(clean) {
+            accept(clean, prev: prev, prev2: prev2)
+            return
+        }
+        if clean.utf8.count < 2 { return }
+        let seen = (personal.pending[clean] ?? 0) + 1
+        let looksLikeSlip = correct(clean, prev: prev, prev2: prev2) != nil
+        if seen >= (looksLikeSlip ? Engine.trustTypoAfter : Engine.trustAfter) {
+            personal.pending[clean] = nil
+            accept(clean, prev: prev, prev2: prev2)
+        } else {
+            personal.pending[clean] = seen
+        }
+    }
+
+    /// The user deleted a hand-typed unknown word straight away.
+    public func unobserve(_ word: String) {
+        let clean = Engine.cleanSurface(word)
+        guard let seen = personal.pending[clean] else { return }
+        personal.pending[clean] = seen > 1 ? seen - 1 : nil
+    }
+
+    /// The most frequent words of all, to fill the bar when the context predicts nothing.
+    public func commonWords(limit: Int = 12) -> [String] {
+        if common == nil { common = lexicon.byPrefix("", column: .strict, limit: 24).map { $0.surface } }
+        return Array((common ?? []).prefix(limit))
+    }
+
     /// Called when the user takes a suggestion or commits a typed word.
     public func accept(_ surface: String, prev: String? = nil, prev2: String? = nil) {
         learnWord(surface)
@@ -444,6 +528,7 @@ public final class Engine {
     }
 
     public func loadPersonal(_ data: PersonalData) {
+        for (k, c) in data.pending { personal.pending[k, default: 0] += c }
         for (k, c) in data.words { learnWord(k, count: c) }
         for (k, c) in data.bigrams {
             let p = k.split(separator: " ").map(String.init)
@@ -461,5 +546,6 @@ public final class Engine {
         personalIndex = [:]
         followers = [:]
         tri = [:]
+        knownKeys = [:]
     }
 }

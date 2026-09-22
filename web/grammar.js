@@ -27,13 +27,23 @@
   // (hun, chhun) are listed explicitly instead.
   var lk = function (w) { return G.looseKey(w, true); };
 
-  var SUBJECT = {
+  // Tables are written as people spell the words and keyed by loose key
+  // at load, because every lookup is by loose key ("tyare" keys as
+  // "tiare", "badha" as "bada"; spelled-out keys would never match).
+  function keyed(src) { var out = {}; for (var k in src) out[lk(k)] = src[k]; return out; }
+
+  var SUBJECT = keyed({
     hu: "1sg", hun: "1sg", tu: "2sg", tun: "2sg", tame: "2pl", ap: "2pl",
     ame: "1pl", apne: "1pl", e: "3sg", te: "3sg", a: "3sg",
     pelo: "3sg", peli: "3sg", pelu: "3sg", teo: "3pl", pela: "3pl", badha: "3pl", loko: "3pl",
-  };
-  var STOPS = { ane: 1, pan: 1, ke: 1, etle: 1, to: 1, karan: 1, karanke: 1,
-                jo: 1, tyare: 1, jyare: 1, athva: 1, matlab: 1, bas: 1 };
+  });
+  var STOPS = keyed({ ane: 1, pan: 1, ke: 1, etle: 1, to: 1, karan: 1, karanke: 1,
+                      jo: 1, tyare: 1, jyare: 1, athva: 1, matlab: 1, bas: 1 });
+  // "tame badha", "ame badha": badha only strengthens the pronoun before it.
+  var QUANTIFIER = keyed({ badha: 1 });
+  // Past copula: hu hato/hati, ame/tame/teo hata. Only the masculine
+  // singular is checked; hati and hatu are left to the writer.
+  var PAST_COPULA_SG = lk("hato"), PAST_COPULA_PL = lk("hata");
 
   // loose key -> persons this form agrees with
   var COPULA = { cu: "1sg", cun: "1sg", ce: "2sg 3sg 3pl", co: "2pl", cie: "1pl" };
@@ -86,6 +96,8 @@
       var k = lk(t.text);
       if (STOPS[k]) break;
       if (SUBJECT[k]) {
+        if (QUANTIFIER[k] && j >= 1 && tokens[j - 1].word && SUBJECT[lk(tokens[j - 1].text)] &&
+            !QUANTIFIER[lk(tokens[j - 1].text)]) continue;
         found.push({ person: SUBJECT[k], word: t.text });
         if (j >= 2 && tokens[j - 1].word && lk(tokens[j - 1].text) === "ane" &&
             tokens[j - 2].word && SUBJECT[lk(tokens[j - 2].text)]) {
@@ -128,6 +140,16 @@
         subj = subjectFor(tokens, i);
         if (subj && !agrees(FUT_COPULA[key], subj.person)) {
           issues.push(issue(t, FUT_COPULA_FOR[subj.person], "after " + subj.word + " it is " + FUT_COPULA_FOR[subj.person]));
+        }
+        continue;
+      }
+
+      if (key === PAST_COPULA_SG || key === PAST_COPULA_PL) {
+        subj = subjectFor(tokens, i);
+        if (subj && key === PAST_COPULA_SG && /pl$/.test(subj.person)) {
+          issues.push(issue(t, "hata", "after " + subj.word + " it is hata"));
+        } else if (subj && key === PAST_COPULA_PL && subj.person === "1sg") {
+          issues.push(issue(t, "hato", "after hu it is hato or hati", "hati"));
         }
         continue;
       }

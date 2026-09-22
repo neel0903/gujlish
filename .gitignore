@@ -15,3 +15,6 @@ Thumbs.db
 .DS_Store
 # SwiftPM build output
 ios/**/.build/
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate

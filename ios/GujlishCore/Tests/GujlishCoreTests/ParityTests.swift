@@ -129,6 +129,11 @@ final class ParityTests: XCTestCase {
             ("hu english finish karish", ""), ("ame kale gayo", "gayo>gaya"),
             ("tame kyare aavyo", "aavyo>aavya"), ("e kale gayo", ""), ("hu ghare hashe", "hashe>hoish"),
             ("tame kale hashe", "hashe>hasho"), ("tame majama chhu", "chhu>cho"),
+            ("hu avyo tyare varsad che", ""), ("hu nano hato jyare e ahi che", ""),
+            ("hu avu chu athva e ave che", ""), ("badha majama cho", "cho>che"),
+            ("tame badha majama cho", ""), ("ame badha majama che", "che>chie"),
+            ("ame tya hato", "hato>hata"), ("tame kya hato", "hato>hata"),
+            ("e ghare hato", ""), ("hu ghare hati", ""),
         ]
         for (text, want) in rules {
             let got = Grammar.check(text, engine: engine).map { $0.from + ">" + $0.to }.joined(separator: ",")
@@ -138,6 +143,9 @@ final class ParityTests: XCTestCase {
         XCTAssertEqual(gaya.count, 1)
         XCTAssertEqual(gaya.first?.to, "gayo")
         XCTAssertEqual(gaya.first?.alt, "gayi")
+        let hata = Grammar.check("hu ghare hata", engine: engine)
+        XCTAssertEqual(hata.first?.to, "hato")
+        XCTAssertEqual(hata.first?.alt, "hati")
         XCTAssertEqual(Grammar.fixAll("hu ghare gayo cho ane tame kem che", engine: engine),
                        "hu ghare gayo chu ane tame kem cho")
     }

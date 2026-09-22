@@ -1,0 +1,520 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		12F6A47E3F7021D22B45728F /* gujlish.db in Resources */ = {isa = PBXBuildFile; fileRef = 9E19CE7D44C6CFBEC48DB117 /* gujlish.db */; };
+		1C1352B2F6BB0DF73059AFE5 /* KeyGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7574368FBA71F1DF3BD60BC1 /* KeyGridView.swift */; };
+		223D1D60BDFA3EF126572A9D /* GujlishCore in Frameworks */ = {isa = PBXBuildFile; productRef = B84CA4E6A25370C5BB89CB1F /* GujlishCore */; };
+		36776A8B488B4F06FA596B19 /* GujlishCore in Frameworks */ = {isa = PBXBuildFile; productRef = DD374C9327EF500A012664A7 /* GujlishCore */; };
+		70E323CD1AE41D79A91D972D /* GujlishApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D7BF5503FB9187D7FE035B2 /* GujlishApp.swift */; };
+		7A08F34EDED588FE144F4B36 /* KeyboardModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 197B507289EE38A89E27295D /* KeyboardModel.swift */; };
+		7AF8421FDB40DEEAF61DF060 /* gujlish.db in Resources */ = {isa = PBXBuildFile; fileRef = 9E19CE7D44C6CFBEC48DB117 /* gujlish.db */; };
+		B4E4471FF2C9F8DBDCE31EA4 /* GujlishKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 46B5DBDC5A78B4B3D4C5D1E2 /* GujlishKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C38BFF2051FAFE9721515ED3 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963637926C768D48E0C8AEA8 /* KeyboardView.swift */; };
+		E48BF8894483A1D7AC9EAD3F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D0E4C4315B6F45B53ED86 /* ContentView.swift */; };
+		F5572560F661F99267132D52 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16790B608226F5F30D626AC /* KeyboardViewController.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F7F39AAD9863B2A9CE7394E8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A4D1CA9889ECC5EEDB5BDA65 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 326D63A38E4F8693A1BE8D7E;
+			remoteInfo = GujlishKeyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		05CC2D30EB6B7E02BFC3CE94 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B4E4471FF2C9F8DBDCE31EA4 /* GujlishKeyboard.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		197B507289EE38A89E27295D /* KeyboardModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardModel.swift; sourceTree = "<group>"; };
+		46B5DBDC5A78B4B3D4C5D1E2 /* GujlishKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GujlishKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D7BF5503FB9187D7FE035B2 /* GujlishApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GujlishApp.swift; sourceTree = "<group>"; };
+		54CCAAB6E22709EAF05EF323 /* Gujlish.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Gujlish.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7574368FBA71F1DF3BD60BC1 /* KeyGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyGridView.swift; sourceTree = "<group>"; };
+		963637926C768D48E0C8AEA8 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
+		9D4D0E4C4315B6F45B53ED86 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9E19CE7D44C6CFBEC48DB117 /* gujlish.db */ = {isa = PBXFileReference; path = gujlish.db; sourceTree = "<group>"; };
+		BFF56CFBF0C24B6502A6FD84 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DE78E642E40C89063FB0BBDD /* GujlishCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GujlishCore; path = GujlishCore; sourceTree = SOURCE_ROOT; };
+		E16790B608226F5F30D626AC /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		EBA75C69744DEFFB701AFEBA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		332F045A3C1B088F6E736C8F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				223D1D60BDFA3EF126572A9D /* GujlishCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		587A5E69E7D94B7D0509A2CA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				36776A8B488B4F06FA596B19 /* GujlishCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0B0FD966C800D3193766B426 /* Gujlish */ = {
+			isa = PBXGroup;
+			children = (
+				9D4D0E4C4315B6F45B53ED86 /* ContentView.swift */,
+				4D7BF5503FB9187D7FE035B2 /* GujlishApp.swift */,
+				EBA75C69744DEFFB701AFEBA /* Info.plist */,
+			);
+			path = Gujlish;
+			sourceTree = "<group>";
+		};
+		1A28A1CC09B6215002158D60 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				9E19CE7D44C6CFBEC48DB117 /* gujlish.db */,
+			);
+			path = Assets;
+			sourceTree = "<group>";
+		};
+		548136A1D1744F02538E5777 = {
+			isa = PBXGroup;
+			children = (
+				1A28A1CC09B6215002158D60 /* Assets */,
+				0B0FD966C800D3193766B426 /* Gujlish */,
+				7620A05D3C329D444DF768A8 /* GujlishKeyboard */,
+				B325E89FC68AEBD9A46930E3 /* Packages */,
+				84C79EDBD457EE6987CD3CF6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7620A05D3C329D444DF768A8 /* GujlishKeyboard */ = {
+			isa = PBXGroup;
+			children = (
+				BFF56CFBF0C24B6502A6FD84 /* Info.plist */,
+				197B507289EE38A89E27295D /* KeyboardModel.swift */,
+				963637926C768D48E0C8AEA8 /* KeyboardView.swift */,
+				E16790B608226F5F30D626AC /* KeyboardViewController.swift */,
+				7574368FBA71F1DF3BD60BC1 /* KeyGridView.swift */,
+			);
+			path = GujlishKeyboard;
+			sourceTree = "<group>";
+		};
+		84C79EDBD457EE6987CD3CF6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				54CCAAB6E22709EAF05EF323 /* Gujlish.app */,
+				46B5DBDC5A78B4B3D4C5D1E2 /* GujlishKeyboard.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B325E89FC68AEBD9A46930E3 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				DE78E642E40C89063FB0BBDD /* GujlishCore */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		326D63A38E4F8693A1BE8D7E /* GujlishKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C523ED47CE36546823781952 /* Build configuration list for PBXNativeTarget "GujlishKeyboard" */;
+			buildPhases = (
+				1D44E568D1CE8C26529C7FAC /* Sources */,
+				E7556C1461C11A02F224B1D2 /* Resources */,
+				587A5E69E7D94B7D0509A2CA /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GujlishKeyboard;
+			packageProductDependencies = (
+				DD374C9327EF500A012664A7 /* GujlishCore */,
+			);
+			productName = GujlishKeyboard;
+			productReference = 46B5DBDC5A78B4B3D4C5D1E2 /* GujlishKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		4DEA8D4A512C3CCE067D5AB6 /* Gujlish */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 777F2B714BE1C99B597BD43F /* Build configuration list for PBXNativeTarget "Gujlish" */;
+			buildPhases = (
+				2D9623E1DE69CACEB0AE180F /* Sources */,
+				CCB28E2294BEE7C98E28653F /* Resources */,
+				332F045A3C1B088F6E736C8F /* Frameworks */,
+				05CC2D30EB6B7E02BFC3CE94 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				42AA659FB69EF275558D8FFE /* PBXTargetDependency */,
+			);
+			name = Gujlish;
+			packageProductDependencies = (
+				B84CA4E6A25370C5BB89CB1F /* GujlishCore */,
+			);
+			productName = Gujlish;
+			productReference = 54CCAAB6E22709EAF05EF323 /* Gujlish.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A4D1CA9889ECC5EEDB5BDA65 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					326D63A38E4F8693A1BE8D7E = {
+						DevelopmentTeam = 4S25F3LG2C;
+						ProvisioningStyle = Automatic;
+					};
+					4DEA8D4A512C3CCE067D5AB6 = {
+						DevelopmentTeam = 4S25F3LG2C;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 8C2FAF3750B0F644700AB0A7 /* Build configuration list for PBXProject "Gujlish" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 548136A1D1744F02538E5777;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5B20817FD2CD04C4F7C36399 /* XCLocalSwiftPackageReference "GujlishCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 84C79EDBD457EE6987CD3CF6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4DEA8D4A512C3CCE067D5AB6 /* Gujlish */,
+				326D63A38E4F8693A1BE8D7E /* GujlishKeyboard */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CCB28E2294BEE7C98E28653F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				12F6A47E3F7021D22B45728F /* gujlish.db in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E7556C1461C11A02F224B1D2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AF8421FDB40DEEAF61DF060 /* gujlish.db in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1D44E568D1CE8C26529C7FAC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C1352B2F6BB0DF73059AFE5 /* KeyGridView.swift in Sources */,
+				7A08F34EDED588FE144F4B36 /* KeyboardModel.swift in Sources */,
+				C38BFF2051FAFE9721515ED3 /* KeyboardView.swift in Sources */,
+				F5572560F661F99267132D52 /* KeyboardViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2D9623E1DE69CACEB0AE180F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E48BF8894483A1D7AC9EAD3F /* ContentView.swift in Sources */,
+				70E323CD1AE41D79A91D972D /* GujlishApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		42AA659FB69EF275558D8FFE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 326D63A38E4F8693A1BE8D7E /* GujlishKeyboard */;
+			targetProxy = F7F39AAD9863B2A9CE7394E8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		104A49F9A8A6663091AD5D4F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Gujlish/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.neel0903.gujlish;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		311C1E25D4151EE2DB050A5B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Gujlish/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.neel0903.gujlish;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3A27C57E90D3B64D9EF80CB0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 4S25F3LG2C;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		7B4E8C39AD000187B212AD7B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 4S25F3LG2C;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		809BADF4CA6450011D87674E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = GujlishKeyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.neel0903.gujlish.keyboard;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		85C9C5F9B4460DE286C74EFC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = GujlishKeyboard/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.neel0903.gujlish.keyboard;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		777F2B714BE1C99B597BD43F /* Build configuration list for PBXNativeTarget "Gujlish" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				104A49F9A8A6663091AD5D4F /* Debug */,
+				311C1E25D4151EE2DB050A5B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8C2FAF3750B0F644700AB0A7 /* Build configuration list for PBXProject "Gujlish" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3A27C57E90D3B64D9EF80CB0 /* Debug */,
+				7B4E8C39AD000187B212AD7B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C523ED47CE36546823781952 /* Build configuration list for PBXNativeTarget "GujlishKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				809BADF4CA6450011D87674E /* Debug */,
+				85C9C5F9B4460DE286C74EFC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		5B20817FD2CD04C4F7C36399 /* XCLocalSwiftPackageReference "GujlishCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = GujlishCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B84CA4E6A25370C5BB89CB1F /* GujlishCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GujlishCore;
+		};
+		DD374C9327EF500A012664A7 /* GujlishCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GujlishCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A4D1CA9889ECC5EEDB5BDA65 /* Project object */;
+}
