@@ -253,9 +253,10 @@ lives in `Gujlish/lane2/`; run with `/Volumes/GujlishDev/venv/bin/python`._
       http://10.0.0.20:8000. Verified end to end under onnxruntime-web in
       node (same graphs, same outputs). **Not yet opened on the phone by
       Neel** — the server log showed no phone request by end of session.
-      Offline/home-screen install needs https (service worker refuses plain
-      http); deploying `lane2/web` under `docs/fix/` on GitHub Pages is the
-      one-step answer (`build_site.py` + push), not done today.
+      Offline/home-screen install needs https, so the page is also deployed:
+      **https://neel0903.github.io/gujlish/fix/** (`build_web.py --docs`
+      after `build_site.py`; the main PWA links to it and its service
+      worker ignores `fix/`). Live and verified 2026-10-05 evening.
 
 ### Things learned today (don't rediscover)
 
@@ -296,10 +297,16 @@ panel (must stay well under 60 MB).
 
 ### Tomorrow
 
-- Open http://10.0.0.20:8000 on the phone; deploy under `docs/fix/` for
-  https/offline.
-- Field-test the chip in WhatsApp; note bad fixes in `web/golden.tsv`.
-- Corruptor gaps seen on golden.tsv: "gharey" (trailing -ey), "gaye"/
-  "ghara" (final vowel slips) are never generated, so the model leaves
-  them to Lane 1. Add ops, retrain (40 min).
+- Open https://neel0903.github.io/gujlish/fix/ on the phone, add to the
+  home screen.
+- Field-test the chip in WhatsApp; note bad fixes in `web/golden.tsv`;
+  read the memory figure in the keyboard's settings panel.
+- **v2 model in progress.** `corrupt.py` gained `final_ey` (ghare→gharey)
+  and `final_vowel` (gaye/ghara) ops; pairs were regenerated with
+  `--seed 2` (so the test set changed: compare v1 and v2 on it with
+  `eval.py --model`). `train.py --out models/gujlish_corrector_v2.pt` was
+  running at the end of the session (log `models/train_v2.log`); at epoch
+  8 it was at dev CER 0.045, v1's best was 0.040. Ship v2 only if it wins
+  on the test set: `export.py --model`, `convert_coreml.py --model`,
+  `build_ios_assets.py`, `build_web.py --docs`, rebuild, install.
 - Beam search / KV cache only if on-device latency demands it.

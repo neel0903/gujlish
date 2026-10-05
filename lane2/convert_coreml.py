@@ -59,8 +59,12 @@ def coreml_greedy(enc, dec, text, max_len=MAX_POS):
 
 
 def main():
-    model_path = os.path.join(HERE, "models", "gujlish_corrector.pt")
-    out_dir = os.path.join(HERE, "models")
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--model", default=os.path.join(HERE, "models", "gujlish_corrector.pt"))
+    ap.add_argument("--out", default=os.path.join(HERE, "models"))
+    args = ap.parse_args()
+    model_path, out_dir = args.model, args.out
     m, _, _ = convert(model_path, out_dir)
     # Check the saved packages, not the in-memory conversions (those predicted differently).
     # CPU only: the strictest path (the keyboard extension runs on CPU/NE).
