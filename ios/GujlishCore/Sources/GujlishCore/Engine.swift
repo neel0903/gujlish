@@ -65,7 +65,7 @@ public final class Engine {
 
     private struct IdPair: Hashable { let a: Int; let b: Int }
 
-    private let lexicon: Lexicon
+    public let lexicon: Lexicon
 
     // Personal words get ids far above any row id in the database.
     private static let personalBase = 1_000_000_000

@@ -1,0 +1,80 @@
+test pairs: 1500
+identity     sent-acc   2.2%   CER 0.1685      0.0 ms/sent
+baseline     sent-acc  28.6%   CER 0.0869      7.8 ms/sent
+autocorrect  sent-acc  45.0%   CER 0.0692     44.0 ms/sent
+model        sent-acc  57.9%   CER 0.0489     10.9 ms/sent
+model-nogate sent-acc  56.5%   CER 0.0414     11.7 ms/sent
+onnx-int8    sent-acc  55.5%   CER 0.0507      7.6 ms/sent
+   src madd karr te maate
+   out mada kar te mate
+   ref madad kare te mate
+
+   src vli gujaarati lekhkaa
+   out vali gujarati lekhak
+   ref vali gujarati lekhak a
+
+   src pasandagim pamaya hoganoo kanawyu
+   out pasandagim pamaya hoganoo kanawyu
+   ref pasandagi pamya hovanu janavyu
+
+   src year noaartha
+   out year noaartha
+   ref year no artha
+
+   src kaunnasil for besat
+   out kaunsil for be sat
+   ref kaunsil for best
+
+   src virudhd eka
+   out virudhd eka
+   ref viruddh eka
+
+   src pareena svarup
+   out pareena svarup
+   ref parinam svarup
+
+   src aano upayogkrew
+   out aano upayogkrew
+   ref aano upayog kari
+
+   src upaa prathamikreetekaam
+   out upaa prathamikreetekaam
+   ref upa prathamik rite kaam
+
+   src wanaspatu tel athava ten
+   out wanaspatu tel athava te
+   ref vanaspati tel athava te
+
+
+golden.tsv (30 real messages; expected includes grammar fixes):
+model        sent-acc  50.0%   CER 0.0501      0.0 ms/sent
+    kem cho                            -> kem cho
+  * hu ghare gayo cho                  -> hu ghare gayo cho
+  * tame kem che                       -> tame kem che
+  * ame majama chu                     -> ame majama chu
+  * tu su kare cho                     -> tu su kare cho
+    e ghare che                        -> e ghare che
+  * hu kale jashe                      -> hu kale jashe
+  * tame kale jaish                    -> tame kale jaish
+  * ame kale gayo                      -> ame kale gayo
+  * Avi gaye ghara                     -> Aavi gaye ghara
+    mane khabar nathi                  -> mane khabar nathi
+    su chale che                       -> su chale che
+    hu jamva jau chu                   -> hu jamva jau chu
+  * tame jamva jao che                 -> tame jamva jao che
+    kal meeting che                    -> kal meeting che
+    thayoo che                         -> thayu che
+  * gharey aavjo                       -> gharey aavjo
+    majaama chhu                       -> majama chu
+  * tu kya cho                         -> tu kya cho
+  * hu ane tame majama cho             -> hu ane tame majama cho
+    hu pan avu chu                     -> hu pan aavu chu
+    tame su karo cho                   -> tame su karo cho
+    su karo cho                        -> su karo cho
+    hu manu chu ke tame saras cho      -> hu manu chu ke tame saras cho
+    e loko majama che                  -> e loko majama che
+  * tame kale hashe                    -> tame kale hashe
+  * hu ghare hashe                     -> hu ghare jashe
+  * Hu ghare gayo cho. Tame?           -> Hu ghare gayo cho. Tame?
+    aaje office ma kaam bahu che       -> aaje office ma kaam bahu che
+    hu thaki gayo chu                  -> hu thaki gayo chu

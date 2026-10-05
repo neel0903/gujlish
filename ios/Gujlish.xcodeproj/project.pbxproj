@@ -7,17 +7,23 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		11F7BD2B8E81A7FE6B81D80B /* fix_vocab.txt in Resources */ = {isa = PBXBuildFile; fileRef = 69CD688179281F74E0973CA2 /* fix_vocab.txt */; };
 		12F6A47E3F7021D22B45728F /* gujlish.db in Resources */ = {isa = PBXBuildFile; fileRef = 9E19CE7D44C6CFBEC48DB117 /* gujlish.db */; };
+		1860877982C8174C95B6F54C /* GujlishDecoder.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 5B628F7106AF94F72AA8DA2D /* GujlishDecoder.mlpackage */; };
 		1C1352B2F6BB0DF73059AFE5 /* KeyGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7574368FBA71F1DF3BD60BC1 /* KeyGridView.swift */; };
 		223D1D60BDFA3EF126572A9D /* GujlishCore in Frameworks */ = {isa = PBXBuildFile; productRef = B84CA4E6A25370C5BB89CB1F /* GujlishCore */; };
 		36776A8B488B4F06FA596B19 /* GujlishCore in Frameworks */ = {isa = PBXBuildFile; productRef = DD374C9327EF500A012664A7 /* GujlishCore */; };
 		70E323CD1AE41D79A91D972D /* GujlishApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D7BF5503FB9187D7FE035B2 /* GujlishApp.swift */; };
 		7A08F34EDED588FE144F4B36 /* KeyboardModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 197B507289EE38A89E27295D /* KeyboardModel.swift */; };
 		7AF8421FDB40DEEAF61DF060 /* gujlish.db in Resources */ = {isa = PBXBuildFile; fileRef = 9E19CE7D44C6CFBEC48DB117 /* gujlish.db */; };
+		9658206A40BB15B5F89177CD /* fix_vocab.txt in Resources */ = {isa = PBXBuildFile; fileRef = 69CD688179281F74E0973CA2 /* fix_vocab.txt */; };
+		A190FF4D39D3A439F139E6D2 /* GujlishEncoder.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 09989767225EB98430F65B4E /* GujlishEncoder.mlpackage */; };
+		A70C306305A277BC71F8F98F /* GujlishDecoder.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 5B628F7106AF94F72AA8DA2D /* GujlishDecoder.mlpackage */; };
 		B4E4471FF2C9F8DBDCE31EA4 /* GujlishKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 46B5DBDC5A78B4B3D4C5D1E2 /* GujlishKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C38BFF2051FAFE9721515ED3 /* KeyboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963637926C768D48E0C8AEA8 /* KeyboardView.swift */; };
 		E48BF8894483A1D7AC9EAD3F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D0E4C4315B6F45B53ED86 /* ContentView.swift */; };
 		F5572560F661F99267132D52 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16790B608226F5F30D626AC /* KeyboardViewController.swift */; };
+		FCB8C77C81C1BD5DE0DEBD40 /* GujlishEncoder.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 09989767225EB98430F65B4E /* GujlishEncoder.mlpackage */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,10 +51,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		09989767225EB98430F65B4E /* GujlishEncoder.mlpackage */ = {isa = PBXFileReference; path = GujlishEncoder.mlpackage; sourceTree = "<group>"; };
 		197B507289EE38A89E27295D /* KeyboardModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardModel.swift; sourceTree = "<group>"; };
 		46B5DBDC5A78B4B3D4C5D1E2 /* GujlishKeyboard.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = GujlishKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4D7BF5503FB9187D7FE035B2 /* GujlishApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GujlishApp.swift; sourceTree = "<group>"; };
 		54CCAAB6E22709EAF05EF323 /* Gujlish.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Gujlish.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B628F7106AF94F72AA8DA2D /* GujlishDecoder.mlpackage */ = {isa = PBXFileReference; path = GujlishDecoder.mlpackage; sourceTree = "<group>"; };
+		69CD688179281F74E0973CA2 /* fix_vocab.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = fix_vocab.txt; sourceTree = "<group>"; };
 		7574368FBA71F1DF3BD60BC1 /* KeyGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyGridView.swift; sourceTree = "<group>"; };
 		963637926C768D48E0C8AEA8 /* KeyboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardView.swift; sourceTree = "<group>"; };
 		9D4D0E4C4315B6F45B53ED86 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -92,7 +101,10 @@
 		1A28A1CC09B6215002158D60 /* Assets */ = {
 			isa = PBXGroup;
 			children = (
+				69CD688179281F74E0973CA2 /* fix_vocab.txt */,
 				9E19CE7D44C6CFBEC48DB117 /* gujlish.db */,
+				5B628F7106AF94F72AA8DA2D /* GujlishDecoder.mlpackage */,
+				09989767225EB98430F65B4E /* GujlishEncoder.mlpackage */,
 			);
 			path = Assets;
 			sourceTree = "<group>";
@@ -229,6 +241,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9658206A40BB15B5F89177CD /* fix_vocab.txt in Resources */,
 				12F6A47E3F7021D22B45728F /* gujlish.db in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -237,6 +250,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				11F7BD2B8E81A7FE6B81D80B /* fix_vocab.txt in Resources */,
 				7AF8421FDB40DEEAF61DF060 /* gujlish.db in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -248,6 +262,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A70C306305A277BC71F8F98F /* GujlishDecoder.mlpackage in Sources */,
+				A190FF4D39D3A439F139E6D2 /* GujlishEncoder.mlpackage in Sources */,
 				1C1352B2F6BB0DF73059AFE5 /* KeyGridView.swift in Sources */,
 				7A08F34EDED588FE144F4B36 /* KeyboardModel.swift in Sources */,
 				C38BFF2051FAFE9721515ED3 /* KeyboardView.swift in Sources */,
@@ -261,6 +277,8 @@
 			files = (
 				E48BF8894483A1D7AC9EAD3F /* ContentView.swift in Sources */,
 				70E323CD1AE41D79A91D972D /* GujlishApp.swift in Sources */,
+				1860877982C8174C95B6F54C /* GujlishDecoder.mlpackage in Sources */,
+				FCB8C77C81C1BD5DE0DEBD40 /* GujlishEncoder.mlpackage in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

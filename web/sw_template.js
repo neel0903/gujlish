@@ -22,6 +22,9 @@ self.addEventListener("message", function (e) {
 self.addEventListener("fetch", function (e) {
   var req = e.request;
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
+  // The Lane 2 tester under fix/ has its own worker and cache; never
+  // let a navigation there overwrite this app's cached index.html.
+  if (new URL(req.url).pathname.indexOf("/fix/") !== -1) return;
   if (req.mode === "navigate") {
     e.respondWith(fetch(req).then(function (res) {
       var copy = res.clone();

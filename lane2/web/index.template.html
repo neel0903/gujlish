@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#101418">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Gujlish Fix</title>
+<style>
+  :root { color-scheme: dark light; --bg:#101418; --fg:#e8ecf1; --mut:#8b949e; --card:#161b22; --line:#30363d; --acc:#1f6feb; --mark:#3d2a00; --markfg:#ffd166; --ok:#2ea043; --bad:#f85149; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f6f8fa; --fg:#1f2328; --mut:#656d76; --card:#fff; --line:#d0d7de; --mark:#fff3c4; --markfg:#7a5200; } }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--fg); font:17px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); max-width:720px; margin:0 auto; }
+  h1 { font-size:18px; margin:4px 0 10px; display:flex; justify-content:space-between; align-items:baseline; }
+  h1 small { color:var(--mut); font-weight:400; font-size:13px; }
+  textarea { width:100%; min-height:150px; font:inherit; font-size:19px; line-height:1.4; padding:12px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--fg); resize:vertical; }
+  textarea:focus { outline:2px solid var(--acc); border-color:transparent; }
+  #strip { display:flex; gap:8px; overflow-x:auto; min-height:44px; padding:6px 0; -webkit-overflow-scrolling:touch; }
+  #strip:empty::before { content:"suggestions appear here as you type"; color:var(--mut); font-size:14px; align-self:center; }
+  .chip { flex:0 0 auto; padding:8px 14px; border-radius:18px; background:var(--card); border:1px solid var(--line); font-size:16px; }
+  .chip:active { background:var(--acc); color:#fff; }
+  .row { display:flex; gap:10px; margin:8px 0; }
+  button { flex:1; font:inherit; font-size:17px; font-weight:600; padding:13px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  button.primary { background:var(--acc); color:#fff; border-color:transparent; }
+  button:disabled { opacity:.5; }
+  #diff { margin:10px 0; padding:10px 12px; border-radius:12px; background:var(--card); border:1px solid var(--line); font-size:17px; line-height:1.6; min-height:44px; }
+  #diff:empty { display:none; }
+  mark { background:var(--mark); color:var(--markfg); border-radius:4px; padding:0 3px; }
+  del { color:var(--mut); text-decoration:line-through; margin-right:2px; font-size:14px; }
+  #foot { color:var(--mut); font-size:12px; line-height:1.6; margin-top:14px; border-top:1px solid var(--line); padding-top:8px; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+</style>
+</head>
+<body>
+<h1>Gujlish Fix <small>type rough, tap Fix</small></h1>
+<textarea id="t" autofocus autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="kem cho majama su thyu"></textarea>
+<div id="strip"></div>
+<div class="row">
+  <button id="fix" class="primary">Fix</button>
+  <button id="undo" disabled>Undo</button>
+  <button id="copy">Copy</button>
+</div>
+<div id="diff"></div>
+<div id="foot">
+  model: <span id="f-model">loading…</span><br>
+  last fix: <span id="f-time">—</span><br>
+  offline cache: <span id="f-sw">—</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.min.js" onerror="window.__ortFailed=true"></script>
+<script>
+// ---------- phonetics (port of phonetics.py) ----------
+const DIGRAPHS = [["chh","C"],["ch","C"],["shh","s"],["sh","s"],["th","T"],["dh","D"],["kh","K"],["gh","G"],["ph","F"],["bh","B"],["jh","J"],["zh","J"]];
+const SINGLES = {z:"J", w:"v", q:"k", f:"F"};
+const VOWEL_RUNS = [["aa","a"],["ee","i"],["ii","i"],["oo","u"],["uu","u"],["ei","e"]];
+const DEASP = {T:"t",D:"d",K:"k",G:"g",F:"f",B:"b",J:"j",C:"c"};
+const VOW = "aeiou";
+function core(word, prefix) {
+  let w = word.toLowerCase().replace(/[^a-z]/g, "");
+  if (!w) return "";
+  w = w.split("x").join("ks");
+  for (const [s, d] of DIGRAPHS) w = w.split(s).join(d);
+  w = [...w].map(c => SINGLES[c] || c).join("");
+  if (w.length > 1) w = w[0] + w.slice(1).split("y").join("i");
+  for (let k = 0; k < 3; k++) { const b = w; for (const [s, d] of VOWEL_RUNS) w = w.split(s).join(d); if (w === b) break; }
+  const out = [];
+  for (const c of w) {
+    if (out.length && out[out.length-1].toLowerCase() === c.toLowerCase() && !VOW.includes(c.toLowerCase())) {
+      if (c === c.toUpperCase()) out[out.length-1] = c; continue;
+    }
+    out.push(c);
+  }
+  w = out.join("");
+  if (!prefix) {
+    while (w.length > 2 && "nm".includes(w[w.length-1]) && VOW.includes(w[w.length-2])) w = w.slice(0, -1);
+    while (w.length > 2 && w[w.length-1] === "h") w = w.slice(0, -1);
+  }
+  return w;
+}
+const strictKey = (w, p) => core(w, p);
+const looseKey = (w, p) => [...core(w, p)].map(c => DEASP[c] || c).join("");
+
+// ---------- Lane 1: lexicon strip (compact port of engine.suggest) ----------
+const LEX = __LEXICON_JSON__;
+const WORDS = LEX.w;                 // [surface, strict_k, loose_k, freq] sorted by freq desc
+const BY_STRICT = WORDS.map((w, i) => i).sort((a, b) => WORDS[a][1] < WORDS[b][1] ? -1 : WORDS[a][1] > WORDS[b][1] ? 1 : 0);
+const BY_LOOSE = WORDS.map((w, i) => i).sort((a, b) => WORDS[a][2] < WORDS[b][2] ? -1 : WORDS[a][2] > WORDS[b][2] ? 1 : 0);
+const BIGRAM = new Map();            // prev loose_k -> Map(next idx -> weight)
+for (const [p, n, w] of LEX.b) {
+  const k = WORDS[p][2]; if (!BIGRAM.has(k)) BIGRAM.set(k, new Map());
+  const m = BIGRAM.get(k); m.set(n, Math.max(m.get(n) || 0, w));
+}
+function byPrefix(order, col, key, limit) {
+  let lo = 0, hi = order.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (WORDS[order[mid]][col] < key) lo = mid + 1; else hi = mid; }
+  const hits = [];
+  for (let i = lo; i < order.length && WORDS[order[i]][col].startsWith(key); i++) hits.push(order[i]);
+  hits.sort((a, b) => WORDS[b][3] - WORDS[a][3] || (WORDS[a][0] < WORDS[b][0] ? -1 : 1));
+  return hits.slice(0, limit);
+}
+function suggest(typed, prev) {
+  const sk = strictKey(typed, true), lk = looseKey(typed, true);
+  if (!sk) return nextWord(prev);
+  const skAlt = strictKey(typed), lkAlt = looseKey(typed);
+  let strict = byPrefix(BY_STRICT, 1, sk, 60);
+  const seen = new Set(strict);
+  if (skAlt !== sk && strict.length < 3) for (const i of byPrefix(BY_STRICT, 1, skAlt, 60)) if (!seen.has(i)) { strict.push(i); seen.add(i); }
+  let loose = byPrefix(BY_LOOSE, 2, lk, 60).filter(i => !seen.has(i));
+  for (const i of loose) seen.add(i);
+  if (lkAlt !== lk && strict.length + loose.length < 3) for (const i of byPrefix(BY_LOOSE, 2, lkAlt, 60)) if (!seen.has(i)) { loose.push(i); seen.add(i); }
+  const ctx = prev ? (BIGRAM.get(looseKey(prev, true)) || new Map()) : new Map();
+  const scored = [];
+  for (const [rows, pen] of [[strict, 0], [loose, 30]]) for (const i of rows) {
+    const w = WORDS[i];
+    let s = w[3] - pen + 4 * (ctx.get(i) || 0) - (w[2].length - lk.length) * 3;
+    if (w[1] === sk) s += 40;
+    scored.push([s, w[0]]);
+  }
+  scored.sort((a, b) => b[0] - a[0] || a[1].length - b[1].length || (a[1] < b[1] ? -1 : 1));
+  const out = [], have = new Set();
+  for (const [, s] of scored) { if (!have.has(s)) { have.add(s); out.push(s); if (out.length >= 5) break; } }
+  return out;
+}
+function nextWord(prev) {
+  if (!prev) return [];
+  const m = BIGRAM.get(looseKey(prev, true)); if (!m) return [];
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([i]) => WORDS[i][0]);
+}
+// lexicon-only corrector: the fallback when the model is unavailable
+function baselineFix(text) {
+  let prev = null;
+  return text.split(" ").map(w => {
+    if (!w) return w;
+    const c = suggest(w, prev);
+    const out = (c.length && looseKey(c[0]) === looseKey(w)) ? c[0] : w;
+    prev = out; return out;
+  }).join(" ");
+}
+
+// ---------- Lane 2: ONNX model ----------
+const MODEL = {enc: null, dec: null, vocab: null, stoi: null, status: "loading", err: ""};
+const ORT_BASE = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/";
+async function loadModel() {
+  const el = document.getElementById("f-model");
+  try {
+    if (window.__ortFailed || typeof ort === "undefined") throw new Error("onnxruntime-web not loaded");
+    ort.env.wasm.wasmPaths = ORT_BASE;
+    ort.env.wasm.numThreads = 1;
+    const v = await (await fetch("model/vocab.json")).json();
+    MODEL.vocab = v.vocab; MODEL.maxLen = v.max_len;
+    MODEL.stoi = new Map(v.vocab.map((c, i) => [c, i]));
+    const opt = {executionProviders: ["wasm"]};
+    [MODEL.enc, MODEL.dec] = await Promise.all([
+      ort.InferenceSession.create("model/encoder_int8.onnx", opt),
+      ort.InferenceSession.create("model/decoder_int8.onnx", opt)]);
+    MODEL.status = "ready";
+    el.textContent = "ONNX int8 loaded"; el.className = "ok";
+  } catch (e) {
+    MODEL.status = "failed"; MODEL.err = String(e);
+    el.textContent = "not loaded (" + MODEL.err.slice(0, 80) + ") — lexicon fallback in use"; el.className = "bad";
+  }
+}
+const i32 = (arr, dims) => new ort.Tensor("int32", Int32Array.from(arr), dims);
+async function greedy(text) {
+  const ids = [...text].map(c => MODEL.stoi.get(c)).filter(i => i !== undefined);
+  if (!ids.length) return text;
+  const {memory} = await MODEL.enc.run({src: i32(ids, [1, ids.length])});
+  const ys = [1];
+  for (let k = 0; k < MODEL.maxLen - 1; k++) {
+    const {logits} = await MODEL.dec.run({tgt: i32(ys, [1, ys.length]), memory});
+    const d = logits.data; let best = 0;
+    for (let i = 1; i < d.length; i++) if (d[i] > d[best]) best = i;
+    if (best === 2) break;
+    ys.push(best);
+  }
+  return ys.slice(1).map(i => MODEL.vocab[i]).join("");
+}
+function osa(a, b) {
+  const n = a.length, m = b.length, d = Array.from({length: n + 1}, (_, i) => { const r = new Array(m + 1).fill(0); r[0] = i; return r; });
+  for (let j = 0; j <= m; j++) d[0][j] = j;
+  for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) {
+    const cost = a[i-1] !== b[j-1] ? 1 : 0;
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + cost);
+    if (i > 1 && j > 1 && a[i-1] === b[j-2] && a[i-2] === b[j-1]) d[i][j] = Math.min(d[i][j], d[i-2][j-2] + 1);
+  }
+  return d[n][m];
+}
+// ---------- gate (port of gate.py) ----------
+const GATEV = __GATE_JSON__;
+const OK = new Set(GATEV.ok), KEEP = new Set(GATEV.keep);
+const SEGMENT_CAP = 0.4, MAX_CHARS = 64;
+const plausible = (s, o) => osa(looseKey(s), looseKey(o)) <= 1 || osa(s, o) <= 2;
+function wordOk(s, o) {
+  if (s === o) return true;
+  if (!OK.has(o) || !plausible(s, o)) return false;
+  if (KEEP.has(s) && looseKey(s) !== looseKey(o)) return false;
+  return true;
+}
+function opcodes(a, b) { // difflib-style blocks via LCS on words
+  const n = a.length, m = b.length, L = Array.from({length: n + 1}, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i+1][j+1] + 1 : Math.max(L[i+1][j], L[i][j+1]);
+  const ops = []; let i = 0, j = 0, si = 0, sj = 0;
+  const flush = () => { if (si < i || sj < j) ops.push(["diff", si, i, sj, j]); };
+  while (i < n || j < m) {
+    if (i < n && j < m && a[i] === b[j]) { flush(); ops.push(["equal", i, i + 1, j, j + 1]); i++; j++; si = i; sj = j; }
+    else if (j < m && (i >= n || L[i][j+1] >= L[i+1][j])) j++;
+    else i++;
+  }
+  flush();
+  return ops;
+}
+function gateApply(srcRaw, out) {
+  const src = srcRaw.toLowerCase();
+  if (!out) return src;
+  const sw = src.split(" "), ow = out.split(" ").filter(Boolean), rw = srcRaw.split(" ");
+  if (!sw.length || !ow.length) return src;
+  const res = [];
+  for (const [tag, i1, i2, j1, j2] of opcodes(sw, ow)) {
+    const sb = sw.slice(i1, i2), ob = ow.slice(j1, j2);
+    if (tag === "equal") { res.push(...sb); continue; }
+    if (sb.length === ob.length) {
+      sb.forEach((s, k) => { const raw = rw[i1 + k] || ""; const named = /^[A-Z]/.test(raw) && (i1 + k) > 0;
+        res.push(!named && wordOk(s, ob[k]) ? ob[k] : s); });
+      continue;
+    }
+    const namedIn = rw.slice(Math.max(i1, 1), i2).some(w => /^[A-Z]/.test(w));
+    if (ob.length && ob.every(o => OK.has(o)) && !namedIn && !sb.some(s => KEEP.has(s))
+        && osa(looseKey(sb.join("")), looseKey(ob.join(""))) <= 2) res.push(...ob); else res.push(...sb);
+  }
+  const gated = res.join(" ");
+  return osa(src, gated) > SEGMENT_CAP * Math.max(1, src.length) ? src : gated;
+}
+function chunks(run) {
+  const out = []; let cur = "";
+  for (const w of run.split(" ")) {
+    if (!cur) cur = w; else if (cur.length + 1 + w.length <= MAX_CHARS) cur += " " + w; else { out.push(cur); cur = w; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+async function fixRun(run) {
+  const pieces = [];
+  for (const ch of chunks(run)) {
+    const src = ch.toLowerCase();
+    const raw = MODEL.status === "ready" ? await greedy(src) : baselineFix(src);
+    pieces.push(gateApply(ch, raw));
+  }
+  let out = pieces.join(" ");
+  if (/^[A-Z]/.test(run)) out = out[0].toUpperCase() + out.slice(1);
+  if (run.length > 1 && run === run.toUpperCase() && /[A-Z]/.test(run)) out = out.toUpperCase();
+  return out;
+}
+async function fixText(text) {
+  const re = /[A-Za-z]+(?: +[A-Za-z]+)*/g;
+  let res = "", last = 0, m;
+  while ((m = re.exec(text))) { res += text.slice(last, m.index) + await fixRun(m[0]); last = m.index + m[0].length; }
+  return res + text.slice(last);
+}
+
+// ---------- UI ----------
+const ta = document.getElementById("t"), strip = document.getElementById("strip"), diffEl = document.getElementById("diff");
+const btnFix = document.getElementById("fix"), btnUndo = document.getElementById("undo"), btnCopy = document.getElementById("copy");
+let before = null;
+function wordDiff(a, b) {
+  const A = a.split(/\s+/).filter(Boolean), B = b.split(/\s+/).filter(Boolean);
+  const n = A.length, m = B.length, L = Array.from({length: n + 1}, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i+1][j+1] + 1 : Math.max(L[i+1][j], L[i][j+1]);
+  const out = []; let i = 0, j = 0;
+  const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) { out.push(esc(A[i])); i++; j++; }
+    else if (j < m && (i >= n || L[i][j+1] >= L[i+1][j])) {
+      if (i < n && L[i+1][j+1] >= L[i][j+1] && L[i+1][j+1] >= L[i+1][j]) { out.push(`<del>${esc(A[i])}</del><mark>${esc(B[j])}</mark>`); i++; j++; }
+      else { out.push(`<mark>${esc(B[j])}</mark>`); j++; }
+    } else { out.push(`<del>${esc(A[i])}</del>`); i++; }
+  }
+  return out.join(" ");
+}
+function currentWord() {
+  const pos = ta.selectionStart, s = ta.value.slice(0, pos);
+  const m = /([A-Za-z]*)$/.exec(s); const typed = m ? m[1] : "";
+  const pre = s.slice(0, s.length - typed.length).trimEnd();
+  const pm = /([A-Za-z]+)$/.exec(pre);
+  return {typed, prev: pm ? pm[1] : null, start: pos - typed.length, end: pos};
+}
+function refreshStrip() {
+  const {typed, prev} = currentWord();
+  const words = typed ? suggest(typed, prev) : nextWord(prev);
+  strip.innerHTML = "";
+  for (const w of words) {
+    const c = document.createElement("span"); c.className = "chip"; c.textContent = w;
+    c.onpointerdown = e => { e.preventDefault(); const {start, end} = currentWord();
+      ta.setRangeText(w + " ", start, end, "end"); ta.focus(); refreshStrip(); };
+    strip.appendChild(c);
+  }
+}
+ta.addEventListener("input", refreshStrip);
+ta.addEventListener("click", refreshStrip);
+ta.addEventListener("keyup", refreshStrip);
+btnFix.onclick = async () => {
+  const text = ta.value; if (!text.trim()) return;
+  btnFix.disabled = true; btnFix.textContent = "Fixing…";
+  const t0 = performance.now();
+  try {
+    const out = await fixText(text);
+    const ms = Math.round(performance.now() - t0);
+    before = text; ta.value = out; btnUndo.disabled = false;
+    diffEl.innerHTML = out === text ? "<span style='color:var(--mut)'>nothing to change</span>" : wordDiff(text, out);
+    document.getElementById("f-time").textContent = `${ms} ms, ${MODEL.status === "ready" ? "model" : "lexicon fallback"}, ${text.length} chars`;
+  } catch (e) {
+    diffEl.innerHTML = `<span class="bad">fix failed: ${String(e).slice(0, 120)}</span>`;
+  }
+  btnFix.disabled = false; btnFix.textContent = "Fix"; refreshStrip();
+};
+btnUndo.onclick = () => { if (before !== null) { ta.value = before; before = null; btnUndo.disabled = true; diffEl.innerHTML = ""; } };
+btnCopy.onclick = async () => {
+  try { await navigator.clipboard.writeText(ta.value); }
+  catch (e) { ta.select(); document.execCommand("copy"); }
+  btnCopy.textContent = "Copied"; setTimeout(() => btnCopy.textContent = "Copy", 900);
+};
+loadModel().then(() => { // warm the wasm so the first tap is not slow
+  if (MODEL.status === "ready") greedy("kem cho").catch(() => {});
+});
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("sw.js").then(() => document.getElementById("f-sw").textContent = "on (works offline)")
+    .catch(e => document.getElementById("f-sw").textContent = "failed: " + e);
+} else {
+  document.getElementById("f-sw").textContent = "off (needs https; plain Wi-Fi URL works online only)";
+}
+</script>
+</body>
+</html>

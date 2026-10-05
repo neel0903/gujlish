@@ -19,6 +19,7 @@ final class KeyboardModel: ObservableObject {
 
     @Published var suggestions: [String] = []
     @Published var grammarFix: Composer.GrammarFix?
+    @Published var sentenceFix: Composer.SentenceFix?
     /// What space will turn the current word into, and the word as typed.
     @Published var correction: String?
     @Published var typedWord = ""
@@ -60,6 +61,19 @@ final class KeyboardModel: ObservableObject {
         store = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             .map { PersonalStore(url: $0.appendingPathComponent("personal.json")) }
         if let personal = store?.load() { composer?.loadPersonal(personal) }
+        // The sentence model (Core ML) opens in the background; until then
+        // the bar simply has no sentence chip.
+        let bundle = Bundle(for: KeyboardModel.self)
+        if let composer = composer, let engine = engine,
+           let enc = bundle.url(forResource: "GujlishEncoder", withExtension: "mlmodelc"),
+           let dec = bundle.url(forResource: "GujlishDecoder", withExtension: "mlmodelc"),
+           let vocab = bundle.url(forResource: "fix_vocab", withExtension: "txt") {
+            composer.installFixer {
+                guard let gate = try? FixGate(vocabularyFile: vocab, lexicon: engine.lexicon),
+                      let core = try? CoreMLFixer(encoder: enc, decoder: dec) else { return nil }
+                return core.fixer(gate: gate)
+            }
+        }
         if let data = UserDefaults.standard.data(forKey: Self.settingsKey),
            let saved = try? JSONDecoder().decode(KeyboardSettings.self, from: data) {
             settings = saved
@@ -107,6 +121,7 @@ final class KeyboardModel: ObservableObject {
             guard let self = self else { return }
             self.publish(\.suggestions, snapshot.suggestions)
             self.publish(\.grammarFix, snapshot.grammarFix)
+            self.publish(\.sentenceFix, snapshot.sentenceFix)
             self.publish(\.correction, snapshot.correction)
             self.publish(\.typedWord, snapshot.typed)
             self.engineMs = max(self.engineMs * 0.8, snapshot.milliseconds)
@@ -256,6 +271,13 @@ final class KeyboardModel: ObservableObject {
         lastKeyTime = ProcessInfo.processInfo.systemUptime
         UIDevice.current.playInputClick()
         composer?.keepTyped()
+        after(commits: 1)
+    }
+
+    func applyFix() {
+        lastKeyTime = ProcessInfo.processInfo.systemUptime
+        UIDevice.current.playInputClick()
+        composer?.applyFix()
         after(commits: 1)
     }
 

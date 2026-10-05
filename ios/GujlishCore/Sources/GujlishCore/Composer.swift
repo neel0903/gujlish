@@ -19,6 +19,8 @@ public struct KeyboardSettings: Codable, Equatable {
     public var english = true
     /// Letters are typed when the finger lands, not when it lifts.
     public var fastKeys = true
+    /// Offer the whole sentence corrected (Lane 2 model) after each word.
+    public var sentenceFix = true
     public init() {}
 
     // Settings saved by an older version lack the newer keys; they keep their defaults.
@@ -29,6 +31,7 @@ public struct KeyboardSettings: Codable, Equatable {
         scriptMode = try c.decodeIfPresent(Bool.self, forKey: .scriptMode) ?? scriptMode
         english = try c.decodeIfPresent(Bool.self, forKey: .english) ?? english
         fastKeys = try c.decodeIfPresent(Bool.self, forKey: .fastKeys) ?? fastKeys
+        sentenceFix = try c.decodeIfPresent(Bool.self, forKey: .sentenceFix) ?? sentenceFix
     }
 }
 
@@ -38,10 +41,21 @@ public final class Composer {
         public let to: String
     }
 
+    /// The sentence before the cursor as typed, and as the model would write it.
+    public struct SentenceFix: Equatable {
+        public let from: String
+        public let to: String
+        public init(from: String, to: String) {
+            self.from = from
+            self.to = to
+        }
+    }
+
     /// Everything the bar shows for one state of the text.
     public struct Snapshot {
         public let suggestions: [String]
         public let grammarFix: GrammarFix?
+        public let sentenceFix: SentenceFix?
         /// What the space key will turn the current word into, if anything,
         /// and the word as typed: the bar offers both, as the system bar does.
         public let correction: String?
@@ -59,6 +73,11 @@ public final class Composer {
     private let engine: Engine
     private let queue = DispatchQueue(label: "gujlish.engine", qos: .userInitiated)
     private unowned let document: TextDocument
+    // The Lane 2 sentence model, if the host could load it. Engine queue only.
+    private var fixer: SentenceFixing?
+    // Set by applyFix, cleared by the next key: a backspace right after it
+    // puts the sentence back as typed.
+    private var lastFix: SentenceFix?
 
     public var settings = KeyboardSettings() {
         didSet {
@@ -92,6 +111,16 @@ public final class Composer {
     public init(engine: Engine, document: TextDocument) {
         self.engine = engine
         self.document = document
+    }
+
+    /// Loads the sentence model off the main thread; `make` runs on the
+    /// engine queue (Core ML takes a moment to open its graphs).
+    public func installFixer(_ make: @escaping () -> SentenceFixing?) {
+        queue.async { [weak self] in
+            let f = make()
+            self?.fixer = f
+        }
+        generation += 1
     }
 
     // ---------- the document, as we know it ----------
@@ -226,7 +255,7 @@ public final class Composer {
         let settings = self.settings
         let protected = protectedWord
         let engine = self.engine
-        return {
+        return { [weak self] in
             let start = DispatchTime.now().uptimeNanoseconds
             var words = c.typed.isEmpty ? engine.nextWord(prev: c.prev, prev2: c.prev2)
                                         : engine.suggest(c.typed, prev: c.prev, prev2: c.prev2)
@@ -236,9 +265,12 @@ public final class Composer {
             }
             let fix = Composer.correction(for: c, engine: engine, settings: settings, protected: protected)
             let issue = Composer.grammarIssue(before, engine: engine, settings: settings)
+            // The sentence model runs once per committed word, not per letter.
+            let sentence = c.typed.isEmpty ? Composer.sentenceFix(before, fixer: self?.fixer, settings: settings) : nil
             let ms = Double(DispatchTime.now().uptimeNanoseconds - start) / 1e6
             return (Snapshot(suggestions: words,
                              grammarFix: issue.map { GrammarFix(from: $0.issue.from, to: $0.issue.to) },
+                             sentenceFix: sentence,
                              correction: fix, typed: c.typed,
                              milliseconds: ms),
                     c.typed.isEmpty ? nil : (before, fix))
@@ -286,10 +318,25 @@ public final class Composer {
         return tail.allSatisfy({ $0.isASCII }) ? (issue, tail) : nil
     }
 
+    // Engine queue only. The sentence holding the last word, as typed and
+    // as the model writes it, when they differ. Plain ASCII only, so that
+    // one deleteBackward per character is exact when it is applied.
+    private static func sentenceFix(_ before: String, fixer: SentenceFixing?, settings: KeyboardSettings) -> SentenceFix? {
+        guard let fixer = fixer, settings.sentenceFix, !settings.scriptMode else { return nil }
+        guard let lastLetter = before.lastIndex(where: { $0.isLetter }) else { return nil }
+        let start = before[..<lastLetter].lastIndex(where: { ".!?".contains($0) || $0.isNewline })
+            .map { before.index(after: $0) }
+        let tail = String(before[(start ?? before.startIndex)...])
+        guard tail.allSatisfy({ $0.isASCII }), tail.contains(where: { $0.isLetter }) else { return nil }
+        let fixed = fixer.fix(tail)
+        return fixed == tail ? nil : SentenceFix(from: tail, to: fixed)
+    }
+
     // ---------- keys ----------
 
     public func type(_ text: String) {
         lastCorrection = nil
+        lastFix = nil
         justTyped = nil
         insert(text)
     }
@@ -311,6 +358,7 @@ public final class Composer {
         let before = currentText()
         let c = context(before)
         lastCorrection = nil
+        lastFix = nil
         if c.typed.isEmpty {
             // Double space: ". " after a word, as the system keyboard does.
             let chars = Array(before.suffix(2))
@@ -336,6 +384,12 @@ public final class Composer {
     }
 
     public func backspace() {
+        if let last = lastFix, currentText().hasSuffix(last.to) {
+            for _ in 0..<last.to.count { deleteBackward() }
+            insert(last.from)
+            lastFix = nil
+            return
+        }
         if let last = lastCorrection, currentText().hasSuffix(last.corrected + " ") {
             if last.corrected.allSatisfy({ $0.isASCII }) {
                 for _ in 0..<(last.corrected.count + 1) { deleteBackward() }
@@ -384,8 +438,32 @@ public final class Composer {
     public func take(_ suggestion: String) {
         let c = context(currentText())
         lastCorrection = nil
+        lastFix = nil
         protectedWord = nil
         _ = commit(Composer.matchCase(c.typed, suggestion), replacing: c, force: true, chosen: true)
+    }
+
+    /// The user tapped the sentence chip: the sentence before the cursor is
+    /// replaced by the model's version. Backspace right after restores it.
+    public func applyFix() {
+        let (settings, before) = (self.settings, currentText())
+        guard let fix = queue.sync(execute: { Composer.sentenceFix(before, fixer: self.fixer, settings: settings) })
+        else { return }
+        lastCorrection = nil
+        prepared = nil
+        for _ in 0..<fix.from.count { deleteBackward() }
+        insert(fix.to)
+        lastFix = fix
+        let engine = self.engine
+        let words = fix.to.split(whereSeparator: { !$0.isLetter }).map(String.init)
+        queue.async {   // the corrected words and their pairs are what the user meant
+            var prev: String?, prev2: String?
+            for w in words where engine.isKnown(w) {
+                engine.accept(w, prev: prev, prev2: prev2)
+                prev2 = prev
+                prev = w
+            }
+        }
     }
 
     public func applyGrammarFix() {
@@ -393,6 +471,7 @@ public final class Composer {
         guard let (issue, tail) = queue.sync(execute: { Composer.grammarIssue(before, engine: engine, settings: settings) })
         else { return }
         lastCorrection = nil
+        lastFix = nil
         for _ in 0..<tail.count { deleteBackward() }
         insert(issue.to + tail.dropFirst(issue.from.count))
     }

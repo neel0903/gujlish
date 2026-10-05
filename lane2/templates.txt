@@ -1,0 +1,232 @@
+# Real chat sentences, canonical spelling (the lexicon's surface form).
+# Slots in {braces} are filled from SLOTS in make_corpus.py.
+# One template per line, # lines ignored.
+kem cho
+kem che
+kem cho {person}
+{person} kem cho
+{person} kem che
+hu majama chu
+majama chu tame kem cho
+majama
+ame majama chie
+badha majama che ne
+badha majama
+su chale che
+su thayu
+su karo cho
+su kare che
+su kaam che
+su vat che
+kai nahi bas
+kai nathi
+kai nahi
+mane khabar nathi
+khabar nathi {person}
+tame kya cho
+tu kya che
+kya cho
+hu {place} chu
+hu {place} jau chu
+hu {time} {place} jaish
+{time} {place} aavjo
+{time} malse
+kale malsu
+kale vat karsu
+pachhi vat karu
+pachhi phone karu
+hamna phone kar
+phone kar ne
+mane phone kar
+mane message kar
+message mokal
+photo mokal
+jaman thayu
+jamva aavo
+jamva chalo
+jaman karyu
+tame jami lidhu
+hu jami ne aavu chu
+su jamyu
+{time} {food} banavi che
+{food} jamva aavo
+cha pivi che
+pani aapo
+ghare aavo
+ghare aavi gayo
+ghare pahochi gayo
+hu nikali gayo chu
+hu nikalu chu
+kyare aavish
+kyare aavo cho
+kyare jasho
+hu {time} aavish
+kale aavu chu
+thodi vaar ma aavu chu
+have nikalu chu
+rasta ma chu
+traffic bahu che
+modu thase
+thodu modu thase
+jaldi aav
+jaldi karo
+aaje office ma kaam bahu che
+kaam puru thayu
+kaam chalu che
+hu kaam karu chu
+meeting ma chu
+meeting puri thai gayi
+kale raja che
+kale su plan che
+{time} su karvanu che
+aaje bahu thaki gayo
+thaki gayo chu
+sui jau chu
+good night sui jao
+uthi gayo
+savare jaldi uthvanu che
+tabiyat kevi che
+tabiyat sari nathi
+mane thik nathi lagtu
+dawa lidhi
+aaram karo
+chinta na karo
+tension na le
+badhu thik thai jashe
+saru che
+bahu saras
+ekdum saras
+barabar che
+thik che
+ha barabar
+ha chale
+na nahi
+ok thik che
+chalo bye
+chalo aavjo
+aavjo
+jai shree krishna
+jsk {person}
+happy birthday {person}
+mane gamyu
+mane bahu gamyu
+mane nathi gamtu
+mane lage che ke
+mane evu lage che
+mane yad che
+mane yad nathi
+bhuli gayo
+hu bhuli gayo
+bolo su kaam che
+kaho su vat che
+vat kar ne
+vat thai gayi
+evu kai nathi
+e loko aavya che
+badha aavi gaya
+koi aavyu nathi
+koi nathi ghare
+ghare koi che
+mummy kya che
+pappa office gaya
+{person} ne kaho
+{person} ne puch
+{person} ne phone kar
+{person} ne kem che
+{person} su kare che
+{person} ghare che
+{person} ne mara jsk kaho
+paisa aapi didha
+paisa joye che
+ketla paisa thaya
+ketla vagya
+ketla vage aavish
+{num} vagya
+{num} vage aavish
+{num} vage malsu
+{num} divas pachhi
+{num} minute ma aavu
+badha {place} gaya che
+aaje varsad che
+bahu garmi che
+bahu thandi che
+aaje mosam saru che
+gadi lai ne aav
+gadi ma aavu chu
+bus ma aavu chu
+train modi che
+ticket lai lidhi
+jovu che
+joi ne kahu chu
+mane moklo
+mane aapo
+mane kaho
+mane batavo
+tame kaho
+tu bol
+bol ne
+hmm thik
+ha ha
+na re
+are yaar
+are wah
+saras saras
+khub saras
+shubh ratri
+shubh savar
+hu ghare gayo chu
+tame kem cho
+tu su kare che
+e ghare che
+hu kale jaish
+tame kale jasho
+ame kale gaya
+aavi gaya ghare
+hu jamva jau chu
+tame jamva jao cho
+kal meeting che
+thayu che
+ghare aavjo
+majama chu
+tu kya che
+hu ane tame majama chie
+hu pan aavu chu
+tame su karo cho
+hu manu chu ke tame saras cho
+e loko majama che
+tame kale hasho
+hu ghare hoish
+hu thaki gayo chu
+hu {time} {place} jaish
+{person} {time} {place} jashe
+{person} {time} aavshe
+{person} ne {food} game che
+mane {food} game che
+{time} {food} che
+{time} {place} javanu che
+{time} {person} ne malvanu che
+{person} {place} gaya
+{person} {place} che
+hu {person} sathe chu
+{person} sathe vat thai
+{person} ne khabar che
+{person} ne khabar nathi
+{person} su kahe che
+{person} ne aavjo kaho
+{thing} kya che
+{thing} mali gayu
+{thing} malyu nahi
+{thing} lai ne aav
+{thing} bhuli gayo
+maru {thing} kya che
+taru {thing} aavi gayu
+{num} {thing} joye che
+mane {num} {thing} aapo
+{time} {num} vage
+{time} {num} vage malsu
+{place} thi aavu chu
+{place} jau chu
+{place} ma chu
+{place} pahochi gayo
+{place} nikali gayo
+{place} jata pehla phone kar

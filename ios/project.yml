@@ -26,6 +26,12 @@ targets:
       - path: Gujlish
       - path: Assets/gujlish.db
         buildPhase: resources
+      - path: Assets/fix_vocab.txt
+        buildPhase: resources
+      - path: Assets/GujlishEncoder.mlpackage
+        buildPhase: sources
+      - path: Assets/GujlishDecoder.mlpackage
+        buildPhase: sources
     dependencies:
       - package: GujlishCore
       - target: GujlishKeyboard
@@ -45,6 +51,12 @@ targets:
       - path: GujlishKeyboard
       - path: Assets/gujlish.db
         buildPhase: resources
+      - path: Assets/fix_vocab.txt
+        buildPhase: resources
+      - path: Assets/GujlishEncoder.mlpackage
+        buildPhase: sources
+      - path: Assets/GujlishDecoder.mlpackage
+        buildPhase: sources
     dependencies:
       - package: GujlishCore
     info:

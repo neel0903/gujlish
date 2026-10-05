@@ -6,7 +6,18 @@ import GujlishCore
 
 struct ContentView: View {
     @State private var text = ""
+    @State private var fixMs: Int?
     private let lexicon = Bundle.main.path(forResource: "gujlish", ofType: "db").flatMap { try? Lexicon(path: $0) }
+    // The Lane 2 sentence model, opened on first use.
+    private static let fixer: SentenceFixing? = {
+        guard let lexicon = Bundle.main.path(forResource: "gujlish", ofType: "db").flatMap({ try? Lexicon(path: $0) }),
+              let enc = Bundle.main.url(forResource: "GujlishEncoder", withExtension: "mlmodelc"),
+              let dec = Bundle.main.url(forResource: "GujlishDecoder", withExtension: "mlmodelc"),
+              let vocab = Bundle.main.url(forResource: "fix_vocab", withExtension: "txt"),
+              let gate = try? FixGate(vocabularyFile: vocab, lexicon: lexicon),
+              let core = try? CoreMLFixer(encoder: enc, decoder: dec) else { return nil }
+        return core.fixer(gate: gate)
+    }()
 
     var body: some View {
         NavigationStack {
@@ -24,6 +35,18 @@ struct ContentView: View {
                         .lineLimit(3...6)
                     if !text.isEmpty {
                         Text(script(text))
+                    }
+                    HStack {
+                        Button("Fix sentence") {
+                            let start = Date()
+                            if let fixer = Self.fixer { text = fixer.fix(text) }
+                            fixMs = Int(Date().timeIntervalSince(start) * 1000)
+                        }
+                        .disabled(text.isEmpty || Self.fixer == nil)
+                        Spacer()
+                        if let ms = fixMs {
+                            Text("\(ms) ms").font(.footnote).foregroundStyle(.secondary)
+                        }
                     }
                 }
             }

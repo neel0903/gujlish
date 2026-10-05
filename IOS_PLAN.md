@@ -351,6 +351,23 @@ learned data is small and lives in memory anyway.
   delete probe in the settings panel), dark-mode colours checked against
   the system keyboard, rotation, memory while typing 500 characters.
 
+**2026-10-05.** The keyboard did not open on the phone: a new signing
+certificate meant the profile had to be trusted again (Settings → General
+→ VPN & Device Management → Developer App → Trust); until that is done
+iOS also hides the keyboard from "Add New Keyboard". Then: the Lane 2
+sentence model (`lane2/`, see `BUILD_PLAN_v2.md` Status) is in the
+keyboard as Core ML — `GujlishCore/SentenceFixer.swift`, a "✓ …" chip in
+the bar after each word, backspace undoes it, toggle in settings, "Fix
+sentence" button in the app. Assets: `python3 build_ios_assets.py` now
+also copies the two `.mlpackage`s and `fix_vocab.txt` from `lane2/models`
+(build them first with `lane2/convert_coreml.py`). Open: memory and
+latency with Core ML loaded, measured on the phone.
+
+Wireless installs: enable "Connect via network" for the phone in Xcode →
+Window → Devices and Simulators once while it is plugged in; after that
+`devicectl` installs over Wi-Fi when the phone is unlocked on the same
+network. A free Apple ID has no remote path beyond that (no TestFlight).
+
 ## Step 0 results
 
 (fill in on the Mac)

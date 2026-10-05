@@ -1,0 +1,10 @@
+# generated: rebuild with make_corpus.py / corrupt.py / train.py / export.py / build_web.py
+data/
+models/*.pt
+models/*.onnx
+models/train.log
+web/model/
+__pycache__/
+models/*.mlpackage/
+web/index.html
+models/*.log

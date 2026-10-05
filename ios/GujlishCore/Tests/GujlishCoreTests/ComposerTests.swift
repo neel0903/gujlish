@@ -9,6 +9,15 @@ final class FakeDocument: TextDocument {
     func deleteBackward() { if !textBefore.isEmpty { textBefore.removeLast() } }
 }
 
+/// Stands in for the Core ML model: "su" -> "shu", nothing else. (Two
+/// letters, so autocorrect-on-space never touches it first.)
+final class StubFixer: SentenceFixing {
+    func fix(_ text: String) -> String {
+        text.split(separator: " ", omittingEmptySubsequences: false)
+            .map { $0 == "su" ? "shu" : String($0) }.joined(separator: " ")
+    }
+}
+
 final class ComposerTests: XCTestCase {
     private var doc: FakeDocument!
     private var composer: Composer!
@@ -288,6 +297,54 @@ final class ComposerTests: XCTestCase {
         try "not json".write(to: url, atomically: true, encoding: .utf8)
         XCTAssertNil(store.load(), "a damaged file is ignored, not fatal")
     }
+
+    // ---------- sentence fix (Lane 2) ----------
+
+    func testSentenceChipAppearsAfterAWord() {
+        composer.installFixer { StubFixer() }
+        type("su che")
+        XCTAssertNil(composer.snapshot().sentenceFix, "not while a word is being typed")
+        type(" ")
+        XCTAssertEqual(composer.snapshot().sentenceFix, Composer.SentenceFix(from: "su che ", to: "shu che "))
+        type("ne ")
+        XCTAssertEqual(composer.snapshot().sentenceFix?.to, "shu che ne ")
+    }
+
+    func testSentenceFixCoversOnlyTheLastSentence() {
+        composer.installFixer { StubFixer() }
+        type("su cho? su che ")
+        XCTAssertEqual(composer.snapshot().sentenceFix, Composer.SentenceFix(from: " su che ", to: " shu che "))
+    }
+
+    func testApplyFixAndUndo() {
+        composer.installFixer { StubFixer() }
+        type("su che ")
+        composer.applyFix()
+        XCTAssertEqual(doc.textBefore, "shu che ")
+        XCTAssertNil(composer.snapshot().sentenceFix, "nothing left to fix")
+        composer.backspace()
+        XCTAssertEqual(doc.textBefore, "su che ", "backspace right after restores the sentence")
+        composer.backspace()
+        XCTAssertEqual(doc.textBefore, "su che", "the next backspace is an ordinary delete")
+    }
+
+    func testSentenceFixRespectsSettingsAndScript() {
+        composer.installFixer { StubFixer() }
+        var s = composer.settings
+        s.sentenceFix = false
+        composer.settings = s
+        type("su che ")
+        XCTAssertNil(composer.snapshot().sentenceFix)
+        s.sentenceFix = true
+        s.scriptMode = true
+        composer.settings = s
+        XCTAssertNil(composer.snapshot().sentenceFix, "script mode leaves Gujarati before the cursor")
+    }
+
+    func testNoFixerNoChip() {
+        type("su che ")
+        XCTAssertNil(composer.snapshot().sentenceFix)
+    }
 }
 
 extension ComposerTests {
@@ -470,6 +527,17 @@ final class LaggyDocumentTests: XCTestCase {
         }
     }
 
+    func testSentenceChipWithALaggingHost() {
+        composer.installFixer { StubFixer() }
+        doc.lag = 2
+        type("su che ")
+        XCTAssertEqual(composer.snapshot().sentenceFix?.to, "shu che ")
+        composer.applyFix()
+        XCTAssertEqual(doc.real, "shu che ")
+        composer.backspace()
+        XCTAssertEqual(doc.real, "su che ")
+    }
+
     func testUndoWithALaggingHost() {
         doc.lag = 2
         type("gharey ")
@@ -509,4 +577,5 @@ final class LaggyDocumentTests: XCTestCase {
         type("majama ")
         XCTAssertEqual(doc.real, "hu majama ")
     }
+
 }

@@ -37,16 +37,23 @@ struct BarView: View {
                     Color.clear.frame(maxWidth: .infinity)
                 }
             } else {
-                let words = Array(model.suggestions.prefix(fix == nil ? 3 : 2))
-                if let fix = fix {
+                // One chip for the sentence model (preferred) or the grammar
+                // rule, then the words. The sentence chip shows the end of
+                // the corrected sentence, where the last change usually is.
+                let sentence = model.sentenceFix
+                let hasChip = sentence != nil || fix != nil
+                let words = Array(model.suggestions.prefix(hasChip ? 2 : 3))
+                if let sentence = sentence {
+                    chip("✓ " + Self.tail(sentence.to), tint: palette.accent) { model.applyFix() }
+                } else if let fix = fix {
                     chip("\(fix.from) → \(fix.to)", tint: palette.accent) { model.applyGrammarFix() }
                 }
                 ForEach(Array(words.enumerated()), id: \.offset) { i, word in
-                    if i > 0 || fix != nil { divider }
+                    if i > 0 || hasChip { divider }
                     chip(word, tint: palette.text) { model.take(word) }
                 }
                 // Fewer than three: keep the thirds, so a word never jumps or stretches.
-                ForEach(0..<max(0, 3 - words.count - (fix == nil ? 0 : 1)), id: \.self) { _ in
+                ForEach(0..<max(0, 3 - words.count - (hasChip ? 1 : 0)), id: \.self) { _ in
                     Color.clear.frame(maxWidth: .infinity)
                 }
             }
@@ -62,6 +69,13 @@ struct BarView: View {
         }
         .frame(height: height)
         .environment(\.colorScheme, model.dark ? .dark : .light)
+    }
+
+    /// The last few words of a sentence, with an ellipsis when it was cut.
+    static func tail(_ text: String, words: Int = 3) -> String {
+        let parts = text.split(separator: " ").map(String.init)
+        if parts.count <= words { return parts.joined(separator: " ") }
+        return "…" + parts.suffix(words).joined(separator: " ")
     }
 
     private var divider: some View {
@@ -117,6 +131,7 @@ struct SettingsPanel: View {
                 .padding(.vertical, 6)
                 Toggle("Autocorrect on space", isOn: $model.settings.autocorrect).padding(.vertical, 6)
                 Toggle("Grammar suggestions", isOn: $model.settings.grammar).padding(.vertical, 6)
+                Toggle("Sentence fix suggestions", isOn: $model.settings.sentenceFix).padding(.vertical, 6)
                 Toggle("Type in Gujarati script", isOn: $model.settings.scriptMode).padding(.vertical, 6)
                 Toggle("Suggest English words too", isOn: $model.settings.english).padding(.vertical, 6)
                 Toggle("Fast keys (type on touch)", isOn: $model.settings.fastKeys).padding(.vertical, 6)
