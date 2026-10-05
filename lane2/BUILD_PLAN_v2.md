@@ -301,12 +301,14 @@ panel (must stay well under 60 MB).
   home screen.
 - Field-test the chip in WhatsApp; note bad fixes in `web/golden.tsv`;
   read the memory figure in the keyboard's settings panel.
-- **v2 model in progress.** `corrupt.py` gained `final_ey` (ghare→gharey)
-  and `final_vowel` (gaye/ghara) ops; pairs were regenerated with
-  `--seed 2` (so the test set changed: compare v1 and v2 on it with
-  `eval.py --model`). `train.py --out models/gujlish_corrector_v2.pt` was
-  running at the end of the session (log `models/train_v2.log`); at epoch
-  8 it was at dev CER 0.045, v1's best was 0.040. Ship v2 only if it wins
-  on the test set: `export.py --model`, `convert_coreml.py --model`,
-  `build_ios_assets.py`, `build_web.py --docs`, rebuild, install.
+- **v2 model: done and shipped (late evening).** `corrupt.py` gained
+  `final_ey` (ghare→gharey) and `final_vowel` (gaye/ghara) ops; pairs
+  regenerated with `--seed 2`. v2 (17 epochs, early stop, best dev CER
+  0.0415) vs v1 on the same regenerated test set: **57.3 % / CER 0.0498**
+  vs 50.6 % / 0.0591; golden.tsv 56.7 % vs 50.0 %, and every remaining
+  golden miss is an agreement fix (cho→chu) that belongs to the grammar
+  chip. v1 is kept as `models/gujlish_corrector_v1.pt`; `models/v2/` holds
+  v2's exports. `eval.py --model` now really evaluates the given model (it
+  silently scored the default before). The Release build with v2 is at
+  DerivedData; it still has to be installed on the phone.
 - Beam search / KV cache only if on-device latency demands it.

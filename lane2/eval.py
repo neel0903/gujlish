@@ -52,7 +52,7 @@ def main():
         print("(no model)")
         return
     from correct import Corrector
-    c = Corrector(backend="torch", gate=True)
+    c = Corrector(path=args.model, backend="torch", gate=True)
     t = time.time()
     hyps = c.fix_batch(srcs)
     score("model", hyps, refs, time.time() - t)
@@ -61,7 +61,8 @@ def main():
     raw = c.fix_batch(srcs)
     score("model-nogate", raw, refs, time.time() - t)
     c.gate = __import__("gate").Gate()
-    if os.path.exists(os.path.join(HERE, "models", "encoder_int8.onnx")):
+    default_model = os.path.join(HERE, "models", "gujlish_corrector.pt")
+    if args.model == default_model and os.path.exists(os.path.join(HERE, "models", "encoder_int8.onnx")):
         co = Corrector(backend="ort", gate=True)
         n = min(200, len(srcs))
         t = time.time()

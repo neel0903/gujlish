@@ -1,36 +1,17 @@
+=== v1 (models/gujlish_corrector.pt) on the regenerated test set
 test pairs: 1500
 identity     sent-acc   3.5%   CER 0.1646      0.0 ms/sent
-baseline     sent-acc  29.3%   CER 0.0871      7.8 ms/sent
-autocorrect  sent-acc  45.7%   CER 0.0676     45.6 ms/sent
-model        sent-acc  57.3%   CER 0.0498     13.0 ms/sent
-model-nogate sent-acc  53.9%   CER 0.0406     12.9 ms/sent
-   src thodiwaar temna bhai ke
-   out thodi var temna bhai ke
-   ref thodi var temna bhai kem
-
-   src sanmn anetene
-   out sanmn anetene
-   ref sanman ane tene
-
-   src drsho krata vadhu
-   out drsho karata vadhu
-   ref desho karata vadhu
-
-   src adirkut reete upaiog karawamaa
-   out adirkut rite upayog karavama
-   ref adhikrut rite upayog karavama
-
-   src ganndhina na
-   out gandhina na
-   ref gandhina naam
-
-   src paeinam taarike
-   out paeinam tarike
-   ref parinam tarike
-
-
+baseline     sent-acc  29.3%   CER 0.0871     14.5 ms/sent
+autocorrect  sent-acc  45.7%   CER 0.0676    344.2 ms/sent
+model        sent-acc  50.6%   CER 0.0591     42.2 ms/sent
+model-nogate sent-acc  48.3%   CER 0.0482     39.8 ms/sent
+onnx-int8    sent-acc  49.0%   CER 0.0615     21.0 ms/sent
+model        sent-acc  50.0%   CER 0.0501      0.0 ms/sent
+=== v2
+model        sent-acc  50.6%   CER 0.0591     11.1 ms/sent
+model-nogate sent-acc  48.3%   CER 0.0482     10.7 ms/sent
 golden.tsv (30 real messages; expected includes grammar fixes):
-model        sent-acc  56.7%   CER 0.0414      0.0 ms/sent
+model        sent-acc  50.0%   CER 0.0501      0.0 ms/sent
     kem cho                            -> kem cho
   * hu ghare gayo cho                  -> hu ghare gayo cho
   * tame kem che                       -> tame kem che
@@ -40,14 +21,14 @@ model        sent-acc  56.7%   CER 0.0414      0.0 ms/sent
   * hu kale jashe                      -> hu kale jashe
   * tame kale jaish                    -> tame kale jaish
   * ame kale gayo                      -> ame kale gayo
-    Avi gaye ghara                     -> Aavi gaya ghare
+  * Avi gaye ghara                     -> Aavi gaye ghara
     mane khabar nathi                  -> mane khabar nathi
     su chale che                       -> su chale che
     hu jamva jau chu                   -> hu jamva jau chu
   * tame jamva jao che                 -> tame jamva jao che
     kal meeting che                    -> kal meeting che
     thayoo che                         -> thayu che
-    gharey aavjo                       -> ghare aavjo
+  * gharey aavjo                       -> gharey aavjo
     majaama chhu                       -> majama chu
   * tu kya cho                         -> tu kya cho
   * hu ane tame majama cho             -> hu ane tame majama cho
@@ -57,7 +38,7 @@ model        sent-acc  56.7%   CER 0.0414      0.0 ms/sent
     hu manu chu ke tame saras cho      -> hu manu chu ke tame saras cho
     e loko majama che                  -> e loko majama che
   * tame kale hashe                    -> tame kale hashe
-  * hu ghare hashe                     -> hu ghare hashe
+  * hu ghare hashe                     -> hu ghare jashe
   * Hu ghare gayo cho. Tame?           -> Hu ghare gayo cho. Tame?
     aaje office ma kaam bahu che       -> aaje office ma kaam bahu che
     hu thaki gayo chu                  -> hu thaki gayo chu
